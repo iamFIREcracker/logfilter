@@ -3,12 +3,80 @@
 
 import re
 import time
-from itertools import ifilter
+import threading
+import Tkinter
+import Queue
+from itertools import imap
 from argparse import ArgumentParser
 
 
+POLLING_INTERVAL = 100 # milliseconds
+BATCH_LIMIT = 20
 
-def tail_f(filename, timeout=1.0):
+def extract_elemets(queue):
+    """
+    Extract elements from the synchronized queue, without blocking.
+
+    @param queue synchronized blocking queue
+    """
+    limit = min(queue.qsize(), BATCH_LIMIT)
+    try:
+        while limit:
+            yield queue.get(0)
+    except Queue.Empty:
+        return
+
+
+class Gui(object):
+
+    def __init__(self, queue):
+        self.queue = queue
+
+        self.root = Tkinter.Tk()
+        container = Tkinter.Frame(self.root)
+        self.text = Tkinter.Text(container)
+        scrollbar = Tkinter.Scrollbar(container)
+
+        # Root
+        self.root.bind('<Escape>', self._quit)
+
+        # Text area
+        self.text['background'] = '#222'
+        self.text['foreground'] = '#eee'
+        self.text.config(yscrollcommand=scrollbar.set)
+        self.text.config(state=Tkinter.DISABLED)
+
+        # Scrollbar
+        scrollbar.config(command=self.text.yview)
+
+        scrollbar.pack(fill=Tkinter.Y, side=Tkinter.RIGHT)
+        self.text.pack(expand=True, fill=Tkinter.BOTH, side=Tkinter.LEFT)
+        container.pack(expand=True, fill=Tkinter.BOTH)
+
+    def _quit(self, event):
+        self.root.quit()
+
+    def mainloop(self):
+        self.root.after(POLLING_INTERVAL, self._periodic)
+        self.root.mainloop()
+
+    def _periodic(self):
+        self.append_text(extract_elemets(self.queue))
+        self.root.after(POLLING_INTERVAL, self._periodic)
+
+    def append_text(self, lines):
+        scroll = False
+        self.text.config(state=Tkinter.NORMAL)
+        for line in lines:
+            scroll = True
+            self.text.insert(Tkinter.END, line)
+        self.text.config(state=Tkinter.DISABLED)
+
+        if scroll:
+            self.text.yview(Tkinter.MOVETO, 1.0)
+
+
+def tail_f(filename):
     """
     Emulate the behaviour of `tail -f`.
 
@@ -16,17 +84,24 @@ def tail_f(filename, timeout=1.0):
     added to the file.
 
     @param filename name of the file to observe
-    @param timeout timeout interval to wait before checking for new content
     """
     with open(filename) as f:
         while True:
             where = f.tell()
             line = f.readline()
+            yield line
+
             if not line:
-                time.sleep(timeout)
                 f.seek(where)
-            else:
-                yield line
+
+
+def first_not_none(iterable):
+    """
+    Extract the first not None element from input iterable
+    """
+    for item in iterable:
+        if item:
+            return item
 
 
 def regexp_filter(*exps):
@@ -43,9 +118,22 @@ def regexp_filter(*exps):
 
         @param gen string to be tested with the outer level criteria.
         """
-        return any(map(lambda r: r.match(line), regexps))
+        return first_not_none(
+                imap(lambda r: line if r.match(line) else None, regexps))
 
     return wrapper
+
+
+def filter_body(filename, interval, filters, queue, stop):
+    for line in imap(regexp_filter(*filters), tail_f(filename)):
+        if stop.isSet():
+            break
+
+        if not line:
+            time.sleep(interval)
+            continue
+
+        queue.put(line)
 
 
 def _build_parser():
@@ -68,15 +156,29 @@ def _build_parser():
     return parser
 
 
-def _main():
+
+def _main1():
+    # Create the communication queue shared between working thread and Gui
+    com_queue = Queue.Queue()
+
+    # Create and start the working thread
+    stop = threading.Event()
     parser = _build_parser()
     args = parser.parse_args()
+    worker = threading.Thread(
+            target=filter_body,
+            args=(args.filename, args.interval, args.filters, com_queue, stop))
+    worker.start()
 
-    tail_f_gen = tail_f(args.filename, args.interval)
-    for line in ifilter(regexp_filter(*args.filters), tail_f_gen):
-        print line,
+    # Create the gui, and enter the mainloop
+    gui = Gui(com_queue)
+    gui.mainloop()
+
+    # graceful exit
+    stop.set()
+    worker.join()
 
 
 
 if __name__ == '__main__':
-    _main();
+    _main1();

@@ -6,7 +6,7 @@ import time
 import threading
 import Tkinter
 import Queue
-from itertools import imap
+from itertools import ifilter
 from argparse import ArgumentParser
 
 
@@ -15,6 +15,14 @@ POLLING_INTERVAL = 100 # milliseconds
 BATCH_LIMIT = 20
 NULL_LISTENER = lambda *a, **kw: None
 
+
+def debug(func):
+    def wrapper(*args, **kwargs):
+        #print '{0}: entering: {1} {2}'.format(func.func_name, args, kwargs)
+        print '{0}: entering'.format(func.func_name)
+        func(*args, **kwargs)
+        print '{0}: exiting...'.format(func.func_name)
+    return wrapper
 
 def extract_elemets(queue, limit):
     """
@@ -85,21 +93,21 @@ class Gui(Tkinter.Tk):
         scrollbar.grid(row=0, column=1, sticky='NS')
         scrollbar.config(command=self.text.yview)
 
+    @debug
     def on_quit(self, event):
-        print 'Gui.on_quit'
         (func, args, kwargs) = self.on_quit_listener
         func(*args, **kwargs)
         self.quit()
 
+    @debug
     def on_button_click(self):
-        print 'Gui.on_button_click'
         filter_string = self.filter_string.get()
         (func, args, kwargs) = self.on_new_filter_listener
         args = [filter_string] + list(args) 
         func(*args, **kwargs)
 
+    @debug
     def on_press_enter(self, event):
-        print 'Gui.on_press_enter'
         filter_string = self.filter_string.get()
         (func, args, kwargs) = self.on_new_filter_listener
         args = [filter_string] + list(args) 
@@ -160,54 +168,7 @@ class Gui(Tkinter.Tk):
             self.text.yview(Tkinter.MOVETO, 1.0)
 
 
-def tail_f(filename):
-    """
-    Emulate the behaviour of `tail -f`.
-
-    Keep reading from the end of the file, and yeald lines as soon as they are
-    added to the file.
-
-    @param filename name of the file to observe
-    """
-    with open(filename) as f:
-        while True:
-            where = f.tell()
-            line = f.readline()
-            yield line
-
-            if not line:
-                f.seek(where)
-
-
-def first_not_none(iterable):
-    """
-    Extract the first not None element from input iterable
-    """
-    for item in iterable:
-        if item:
-            return item
-
-
-def regexp_filter(*exps):
-    """
-    Create a reg exp filter function to be passed to built-in `ifilter` func.
-
-    @param exps list of regular expressions representing filter criteria.
-    """
-    regexps = map(re.compile, exps)
-
-    def wrapper(line):
-        """
-        Return True if the input string matches one of the outer level criteria.
-
-        @param gen string to be tested with the outer level criteria.
-        """
-        return first_not_none(
-                imap(lambda r: line if r.match(line) else None, regexps))
-
-    return wrapper
-
-
+@debug
 def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
     """
     Spawn a file filter thread as soon as a filter is read from the queue.
@@ -217,7 +178,6 @@ def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
     @param filter_queue message queue containing the filter to apply
     @param lines_queue message queue containing the lines to pass to the gui
     """
-    print 'filter_thread_spawner_body: starting ..'
     stop = None
     worker = None
     while True:
@@ -235,38 +195,75 @@ def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
             target=file_observer_body,
             args=(filename, interval, (filter_string,), lines_queue, stop))
         worker.start()
-    print 'filter_thread_spawner_body: exiting ..'
 
 
-def file_observer_body(filename, interval, filters, queue, stop):
+def tail_f(filename):
+    """
+    Emulate the behaviour of `tail -f`.
+
+    Keep reading from the end of the file, and yeald lines as soon as they are
+    added to the file.
+
+    @param filename name of the file to observe
+    """
+    with open(filename) as f:
+        while True:
+            where = f.tell()
+            line = f.readline()
+            if not line:
+                f.seek(where)
+
+            yield line
+
+
+def regexp_filter(*exps):
+    """
+    Create a reg exp filter function to be passed to built-in `ifilter` func.
+
+    @param exps list of regular expressions representing filter criteria.
+    """
+    regexps = map(re.compile, exps)
+
+    def wrapper(line):
+        """
+        Return True if the input string matches one of the outer level criteria.
+
+        @param gen string to be tested with the outer level criteria.
+        """
+        return line == '' or any(map(lambda r: r.match(line), regexps))
+
+    return wrapper
+
+
+@debug
+def file_observer_body(filename, interval, filters, lines_queue, stop):
     """
     Body function of thread waiting for file content changes.
 
     The thread will poll `filename` every `iterval` seconds looking for new
     lines;  as soon as new lines are read from the file, these are filtered
     depeding on `filters`, and the one matching given criteria are put into the
-    synchronized `queue`.
+    synchronized `lines_queue`.
 
     @param filename filename to poll
     @param interval polling interval
     @param filters iterable of regexp filters to apply to the file content
-    @param queue synchronized queue containing lines matching criteria
+    @param lines_queue synchronized queue containing lines matching criteria
     @param stop `threading.Event` object, used to stop the thread.
     """
-    print 'file_observer_body: starting ..'
-    for line in imap(regexp_filter(*filters), tail_f(filename)):
+    for line in ifilter(regexp_filter(*filters), tail_f(filename)):
         if stop.isSet():
-            queue.put(STOP_MESSAGE)
             break
 
         if not line:
+            # We reched the EOF, hence wait for new content
             time.sleep(interval)
             continue
 
-        queue.put(line)
-    print 'file_observer_body: exiting ..'
+        lines_queue.put(line)
 
 
+@debug
 def gui_updater_body(gui, lines_queue):
     """
     Body function of the thread in charge of update the gui text area.
@@ -276,22 +273,22 @@ def gui_updater_body(gui, lines_queue):
     """
     while True:
         line = lines_queue.get()
-        print 'Received line: {0}'.format(line),
         if line == STOP_MESSAGE:
             break
 
         gui.schedule(gui.append_text, (line,))
 
 
+@debug
 def quit(filter_queue, lines_queue):
     """
     Invoked by the GUI when the main window has been closed.
     """
-    print '__main__.quit'
     filter_queue.put(STOP_MESSAGE)
     lines_queue.put(STOP_MESSAGE)
 
 
+@debug
 def apply_filter(filter_string, gui, filter_queue):
     """
     Invoked by the GUI when a new filter is entered.
@@ -303,7 +300,6 @@ def apply_filter(filter_string, gui, filter_queue):
     @param filter_string string filter
     @param filter_queue message queue shared with working thread.
     """
-    print '__main__.apply_filter'
     gui.clear_text()
     filter_queue.put(filter_string)
 
@@ -359,7 +355,7 @@ def _main1():
     parser = _build_parser()
     args = parser.parse_args()
     worker = threading.Thread(
-            target=file_observer,
+            target=file_observer_body,
             args=(args.filename, args.interval, args.filters, com_queue, stop))
     worker.start()
 

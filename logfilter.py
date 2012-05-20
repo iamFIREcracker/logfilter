@@ -124,6 +124,19 @@ class Gui(Tkinter.Tk):
         args = [filter_string] + list(args)
         func(*args, **kwargs)
 
+    def raise_(self):
+        """
+        Raise the window on the top of windows stack.
+        """
+        self.attributes('-topmost', True)
+        self.attributes('-topmost', False)
+
+    def scroll_bottom(self):
+        """
+        Scroll to the bottom of the text area.
+        """
+        self.text.yview(Tkinter.MOVETO, 1.0)
+
     def register_listener(self, event, func, *args, **kwargs):
         """
         Register a listener for the specified named event.
@@ -139,7 +152,6 @@ class Gui(Tkinter.Tk):
             self.on_quit_listener = (func, args, kwargs)
         elif event == 'new_filter':
             self.on_new_filter_listener = (func, args, kwargs)
-
 
     def schedule(self, func, *args, **kwargs):
         """
@@ -175,8 +187,8 @@ class Gui(Tkinter.Tk):
         self.text.config(state=Tkinter.DISABLED)
 
         if scroll:
-            self.lift()
-            self.text.yview(Tkinter.MOVETO, 1.0)
+            self.raise_()
+            self.scroll_bottom()
 
 
 @debug

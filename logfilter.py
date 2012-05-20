@@ -37,9 +37,8 @@ class Gui(Tkinter.Tk):
         Tkinter.Tk.__init__(self, parent) #super(Tkinter.Tk, self).__init__(parent)
         self.parent = parent
 
-        self.on_quit_listener = NULL_LISTENER
-        self.on_button_click_listener = NULL_LISTENER
-        self.on_press_enter_listener = NULL_LISTENER
+        self.on_quit_listener = (NULL_LISTENER, (), {})
+        self.on_new_filter_listener = (NULL_LISTENER, (), {})
 
         self._initialize()
 
@@ -87,24 +86,59 @@ class Gui(Tkinter.Tk):
         scrollbar.config(command=self.text.yview)
 
     def on_quit(self, event):
+        print 'Gui.on_quit'
+        (func, args, kwargs) = self.on_quit_listener
+        func(*args, **kwargs)
         self.quit()
-        self.on_quit_listener()
 
     def on_button_click(self):
-        self.on_button_click_listener(self.filter_string.get())
+        print 'Gui.on_button_click'
+        filter_string = self.filter_string.get()
+        (func, args, kwargs) = self.on_new_filter_listener
+        args = [filter_string] + list(args) 
+        func(*args, **kwargs)
 
     def on_press_enter(self, event):
-        self.on_press_enter_listener(self.filter_string.get())
+        print 'Gui.on_press_enter'
+        filter_string = self.filter_string.get()
+        (func, args, kwargs) = self.on_new_filter_listener
+        args = [filter_string] + list(args) 
+        func(*args, **kwargs)
 
-    def schedule(self, function, *args, **kwargs):
+    def register_listener(self, event, func, *args, **kwargs):
         """
-        Ask the event loop to schedule given function with arguments
+        Register a listener for the specified named event.
 
-        @param function function to schedule
+        @param func function to schedule
         @param args positional arguments for the fuction
         @param kwargs named arguments for the function
         """
-        self.after_idle(function, *args, **kwargs)
+        if event not in ['quit', 'new_filter']:
+            raise ValueError("Invalid event name: " + event)
+
+        if event == 'quit':
+            self.on_quit_listener = (func, args, kwargs)
+        elif event == 'new_filter':
+            self.on_new_filter_listener = (func, args, kwargs)
+
+
+    def schedule(self, func, *args, **kwargs):
+        """
+        Ask the event loop to schedule given function with arguments
+
+        @param func function to schedule
+        @param args positional arguments for the fuction
+        @param kwargs named arguments for the function
+        """
+        self.after_idle(func, *args, **kwargs)
+
+    def clear_text(self):
+        """
+        Delete all the text contained in the text area.
+        """
+        self.text.config(state=Tkinter.NORMAL)
+        self.text.delete(1.0, Tkinter.END)
+        self.text.config(state=Tkinter.DISABLED)
 
     def append_text(self, lines):
         """
@@ -123,80 +157,6 @@ class Gui(Tkinter.Tk):
 
         if scroll:
             self.lift()
-            self.text.yview(Tkinter.MOVETO, 1.0)
-
-
-class Gui1(object):
-
-    def __init__(self, queue):
-        self.queue = queue
-        self._initialize()
-
-    def _initialize(self):
-        self.root = Tkinter.Tk()
-        container1 = Tkinter.Frame(self.root)
-        self.filter_string = Tkinter.StringVar()
-        entry = Tkinter.Entry(container1, textvariable=self.filter_string)
-        container2 = Tkinter.Frame(self.root)
-        self.text = Tkinter.Text(container2, bg='#222', fg='#eee')
-        scrollbar = Tkinter.Scrollbar(container2)
-
-        # Root
-        self.root.grid()
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_rowconfigure(1, weight=1)
-        self.root.bind('<Escape>', self.quit)
-
-        # Container1
-        container1.grid(row=0, column=0, sticky='EW')
-        container1.grid_columnconfigure(0, weight=1)
-
-        # Filter entry
-        entry.grid(row=0, column=0, sticky='EW')
-        entry.bind("<Return>", self.press_enter_cb)
-
-        # Container 2
-        container2.grid(row=1, column=0, sticky='NSEW')
-        container2.grid_rowconfigure(0, weight=1)
-        container2.grid_columnconfigure(0, weight=1)
-
-        # Text area
-        self.text.grid(row=0, column=0, sticky='NSEW')
-        self.text.config(yscrollcommand=scrollbar.set)
-        self.text.config(state=Tkinter.DISABLED)
-
-        # Scrollbar
-        scrollbar.grid(row=0, column=1, sticky='NS')
-        scrollbar.config(command=self.text.yview)
-
-        #scrollbar.pack(fill=Tkinter.Y, side=Tkinter.RIGHT)
-        #self.text.pack(expand=True, fill=Tkinter.BOTH, side=Tkinter.LEFT)
-
-    def quit(self, event):
-        self.root.quit()
-
-    def press_enter_cb(self, event):
-        print 'Press enter cb' + self.filter_string.get()
-        
-
-    def mainloop(self):
-        self.root.after(POLLING_INTERVAL, self._periodic)
-        self.root.mainloop()
-
-    def _periodic(self):
-        self.append_text(extract_elemets(self.queue, BATCH_LIMIT))
-        self.root.after(POLLING_INTERVAL, self._periodic)
-
-    def append_text(self, lines):
-        scroll = False
-        self.text.config(state=Tkinter.NORMAL)
-        for line in lines:
-            scroll = True
-            self.text.insert(Tkinter.END, line)
-        self.text.config(state=Tkinter.DISABLED)
-
-        if scroll:
-            self.root.lift()
             self.text.yview(Tkinter.MOVETO, 1.0)
 
 
@@ -232,7 +192,7 @@ def regexp_filter(*exps):
     """
     Create a reg exp filter function to be passed to built-in `ifilter` func.
 
-    @param *exps list of regular expressions representing filter criteria.
+    @param exps list of regular expressions representing filter criteria.
     """
     regexps = map(re.compile, exps)
 
@@ -248,7 +208,37 @@ def regexp_filter(*exps):
     return wrapper
 
 
-def filter_body(filename, interval, filters, queue, stop):
+def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
+    """
+    Spawn a file filter thread as soon as a filter is read from the queue.
+
+    @param filename name of the file to pass to the working thread
+    @param interval polling interval
+    @param filter_queue message queue containing the filter to apply
+    @param lines_queue message queue containing the lines to pass to the gui
+    """
+    print 'filter_thread_spawner_body: starting ..'
+    stop = None
+    worker = None
+    while True:
+        filter_string = filter_queue.get()
+        print 'Received filter: {0}'.format(filter_string)
+        if worker is not None:
+            stop.set()
+            worker.join()
+
+        if filter_string == STOP_MESSAGE:
+            break
+
+        stop = threading.Event()
+        worker = threading.Thread(
+            target=file_observer_body,
+            args=(filename, interval, (filter_string,), lines_queue, stop))
+        worker.start()
+    print 'filter_thread_spawner_body: exiting ..'
+
+
+def file_observer_body(filename, interval, filters, queue, stop):
     """
     Body function of thread waiting for file content changes.
 
@@ -263,6 +253,7 @@ def filter_body(filename, interval, filters, queue, stop):
     @param queue synchronized queue containing lines matching criteria
     @param stop `threading.Event` object, used to stop the thread.
     """
+    print 'file_observer_body: starting ..'
     for line in imap(regexp_filter(*filters), tail_f(filename)):
         if stop.isSet():
             queue.put(STOP_MESSAGE)
@@ -273,48 +264,56 @@ def filter_body(filename, interval, filters, queue, stop):
             continue
 
         queue.put(line)
+    print 'file_observer_body: exiting ..'
 
 
-def gui_update_body(gui, queue):
+def gui_updater_body(gui, lines_queue):
     """
     Body function of the thread in charge of update the gui text area.
 
     @param gui `Gui` object to update.
-    @param queue synchronized queue containing lines used to update the gui.
+    @param lines_queue message queue containing lines used to update the gui.
     """
     while True:
-        items = extract_elemets(BATCH_LIMIT)
-        if not all(item != STOP_MESSAGE for item in items):
+        line = lines_queue.get()
+        print 'Received line: {0}'.format(line),
+        if line == STOP_MESSAGE:
             break
 
-        gui.schedule(gui.append_text, items)
+        gui.schedule(gui.append_text, (line,))
 
 
-def working_thread_listener(queue):
-    """"""
-    
-
-
-def quit():
+def quit(filter_queue, lines_queue):
     """
     Invoked by the GUI when the main window has been closed.
     """
+    print '__main__.quit'
+    filter_queue.put(STOP_MESSAGE)
+    lines_queue.put(STOP_MESSAGE)
 
 
-def apply_filter(queue):
+def apply_filter(filter_string, gui, filter_queue):
     """
     Invoked by the GUI when a new filter is entered.
 
-    @param queue message queue shared with working thread.
+    Clear the gui and queue the received filter into the shared synchronized
+    queue.
+
+    @param gui `Gui` object to update.
+    @param filter_string string filter
+    @param filter_queue message queue shared with working thread.
     """
-    queue.put(None)
+    print '__main__.apply_filter'
+    gui.clear_text()
+    filter_queue.put(filter_string)
 
 
 def _build_parser():
     """
     Return a command-line arguments parser.
     """
-    parser = ArgumentParser(description='Filter the content of a file, dynamically')
+    parser = ArgumentParser(
+            description='Filter the content of a file, dynamically')
 
     parser.add_argument(
             '-f', '--filename', dest='filename', required=True,
@@ -323,15 +322,31 @@ def _build_parser():
             '-i', '--interval', dest='interval', required=True, type=float,
             help='Timeout interval to wait before checking for updates',
             metavar='INTERVAL')
-    parser.add_argument(
-            dest='filters', nargs='+',
-            help='Filters to apply to the file content', metavar="FILTER")
 
     return parser
 
 
 def _main():
+    parser = _build_parser()
+    args = parser.parse_args()
+    
+    filter_queue = Queue.Queue()
+    lines_queue = Queue.Queue()
+
     gui = Gui(None)
+    gui.register_listener('quit', quit, filter_queue, lines_queue)
+    gui.register_listener('new_filter', apply_filter, gui, filter_queue)
+
+    filter_thread_spawner = threading.Thread(
+            target=filter_thread_spawner_body,
+            args=(args.filename, args.interval, filter_queue, lines_queue))
+    filter_thread_spawner.start()
+
+    gui_updater = threading.Thread(
+            target=gui_updater_body,
+            args=(gui, lines_queue))
+    gui_updater.start()
+
     gui.mainloop()
 
 
@@ -344,7 +359,7 @@ def _main1():
     parser = _build_parser()
     args = parser.parse_args()
     worker = threading.Thread(
-            target=filter_body,
+            target=file_observer,
             args=(args.filename, args.interval, args.filters, com_queue, stop))
     worker.start()
 

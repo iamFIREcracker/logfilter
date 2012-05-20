@@ -10,19 +10,23 @@ from itertools import ifilter
 from argparse import ArgumentParser
 
 
+"""Stop message used to stop threads."""
 STOP_MESSAGE = None
-POLLING_INTERVAL = 100 # milliseconds
-BATCH_LIMIT = 20
+
+"""Number of lines to collect before telling the gui to refresh."""
+BATCH_LIMIT = 50
+
+"""Default event listener."""
 NULL_LISTENER = lambda *a, **kw: None
 
 
 def debug(func):
     def wrapper(*args, **kwargs):
-        #print '{0}: entering: {1} {2}'.format(func.func_name, args, kwargs)
         print '{0}: entering'.format(func.func_name)
         func(*args, **kwargs)
         print '{0}: exiting...'.format(func.func_name)
     return wrapper
+
 
 def extract_elemets(queue, limit):
     """
@@ -103,14 +107,14 @@ class Gui(Tkinter.Tk):
     def on_button_click(self):
         filter_string = self.filter_string.get()
         (func, args, kwargs) = self.on_new_filter_listener
-        args = [filter_string] + list(args) 
+        args = [filter_string] + list(args)
         func(*args, **kwargs)
 
     @debug
     def on_press_enter(self, event):
         filter_string = self.filter_string.get()
         (func, args, kwargs) = self.on_new_filter_listener
-        args = [filter_string] + list(args) 
+        args = [filter_string] + list(args)
         func(*args, **kwargs)
 
     def register_listener(self, event, func, *args, **kwargs):
@@ -251,16 +255,21 @@ def file_observer_body(filename, interval, filters, lines_queue, stop):
     @param lines_queue synchronized queue containing lines matching criteria
     @param stop `threading.Event` object, used to stop the thread.
     """
+    lines = []
     for line in ifilter(regexp_filter(*filters), tail_f(filename)):
         if stop.isSet():
             break
+
+        if (not line and lines) or (len(lines) == BATCH_LIMIT):
+            lines_queue.put(lines)
+            lines = []
 
         if not line:
             # We reched the EOF, hence wait for new content
             time.sleep(interval)
             continue
 
-        lines_queue.put(line)
+        lines.append(line)
 
 
 @debug
@@ -272,11 +281,11 @@ def gui_updater_body(gui, lines_queue):
     @param lines_queue message queue containing lines used to update the gui.
     """
     while True:
-        line = lines_queue.get()
-        if line == STOP_MESSAGE:
+        lines = lines_queue.get()
+        if lines == STOP_MESSAGE:
             break
 
-        gui.schedule(gui.append_text, (line,))
+        gui.schedule(gui.append_text, lines)
 
 
 @debug
@@ -325,7 +334,7 @@ def _build_parser():
 def _main():
     parser = _build_parser()
     args = parser.parse_args()
-    
+
     filter_queue = Queue.Queue()
     lines_queue = Queue.Queue()
 

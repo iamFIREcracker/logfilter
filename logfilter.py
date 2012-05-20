@@ -70,6 +70,7 @@ class Gui(Tkinter.Tk):
         self.grid()
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
+        self.protocol('WM_DELETE_WINDOW', self.on_close)
         self.bind('<Escape>', self.on_quit)
 
         # Container1
@@ -96,6 +97,12 @@ class Gui(Tkinter.Tk):
         # Scrollbar
         scrollbar.grid(row=0, column=1, sticky='NS')
         scrollbar.config(command=self.text.yview)
+
+    @debug
+    def on_close(self):
+        (func, args, kwargs) = self.on_quit_listener
+        func(*args, **kwargs)
+        self.quit()
 
     @debug
     def on_quit(self, event):

@@ -13,6 +13,7 @@ from argparse import ArgumentParser
 POLLING_INTERVAL = 100 # milliseconds
 BATCH_LIMIT = 20
 
+
 def extract_elemets(queue):
     """
     Extract elements from the synchronized queue, without blocking.
@@ -31,30 +32,54 @@ class Gui(object):
 
     def __init__(self, queue):
         self.queue = queue
+        self._initialize()
 
+    def _initialize(self):
         self.root = Tkinter.Tk()
-        container = Tkinter.Frame(self.root)
-        self.text = Tkinter.Text(container)
-        scrollbar = Tkinter.Scrollbar(container)
+        container1 = Tkinter.Frame(self.root)
+        self.filter_string = Tkinter.StringVar()
+        entry = Tkinter.Entry(container1, textvariable=self.filter_string)
+        container2 = Tkinter.Frame(self.root)
+        self.text = Tkinter.Text(container2, bg='#222', fg='#eee')
+        scrollbar = Tkinter.Scrollbar(container2)
 
         # Root
-        self.root.bind('<Escape>', self._quit)
+        self.root.grid()
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.bind('<Escape>', self.quit)
+
+        # Container1
+        container1.grid(row=0, column=0, sticky='EW')
+        container1.grid_columnconfigure(0, weight=1)
+
+        # Filter entry
+        entry.grid(row=0, column=0, sticky='EW')
+        entry.bind("<Return>", self.press_enter_cb)
+
+        # Container 2
+        container2.grid(row=1, column=0, sticky='NSEW')
+        container2.grid_rowconfigure(0, weight=1)
+        container2.grid_columnconfigure(0, weight=1)
 
         # Text area
-        self.text['background'] = '#222'
-        self.text['foreground'] = '#eee'
+        self.text.grid(row=0, column=0, sticky='NSEW')
         self.text.config(yscrollcommand=scrollbar.set)
         self.text.config(state=Tkinter.DISABLED)
 
         # Scrollbar
+        scrollbar.grid(row=0, column=1, sticky='NS')
         scrollbar.config(command=self.text.yview)
 
-        scrollbar.pack(fill=Tkinter.Y, side=Tkinter.RIGHT)
-        self.text.pack(expand=True, fill=Tkinter.BOTH, side=Tkinter.LEFT)
-        container.pack(expand=True, fill=Tkinter.BOTH)
+        #scrollbar.pack(fill=Tkinter.Y, side=Tkinter.RIGHT)
+        #self.text.pack(expand=True, fill=Tkinter.BOTH, side=Tkinter.LEFT)
 
-    def _quit(self, event):
+    def quit(self, event):
         self.root.quit()
+
+    def press_enter_cb(self, event):
+        print 'Press enter cb' + self.filter_string.get()
+        
 
     def mainloop(self):
         self.root.after(POLLING_INTERVAL, self._periodic)
@@ -73,6 +98,7 @@ class Gui(object):
         self.text.config(state=Tkinter.DISABLED)
 
         if scroll:
+            self.root.lift()
             self.text.yview(Tkinter.MOVETO, 1.0)
 
 
@@ -136,6 +162,28 @@ def filter_body(filename, interval, filters, queue, stop):
         queue.put(line)
 
 
+def working_thread_listener(queue):
+    """"""
+    
+
+
+def quit():
+    """
+    Invoked by the GUI when the main window has been closed.
+    """
+
+
+def apply_filter(queue):
+    """
+    Invoked by the GUI when a new filter is entered.
+
+    @param queue message queue shared with working thread.
+    """
+    queue.put(None)
+
+
+
+
 def _build_parser():
     """
     Return a command-line arguments parser.
@@ -156,6 +204,8 @@ def _build_parser():
     return parser
 
 
+def _main():
+    gui = Gui(quit, apply_filter)
 
 def _main1():
     # Create the communication queue shared between working thread and Gui

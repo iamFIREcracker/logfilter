@@ -10,17 +10,19 @@ from itertools import imap
 from argparse import ArgumentParser
 
 
+STOP_MESSAGE = None
 POLLING_INTERVAL = 100 # milliseconds
 BATCH_LIMIT = 20
 
 
-def extract_elemets(queue):
+def extract_elemets(queue, limit):
     """
-    Extract elements from the synchronized queue, without blocking.
+    Extract at most `limit` elements from the queue, without blocking.
 
     @param queue synchronized blocking queue
+    @param limit maximum number of elements to extract
     """
-    limit = min(queue.qsize(), BATCH_LIMIT)
+    limit = min(queue.qsize(), limit)
     try:
         while limit:
             yield queue.get(0)
@@ -28,7 +30,102 @@ def extract_elemets(queue):
         return
 
 
-class Gui(object):
+class Gui(Tkinter.Tk):
+
+    def __init__(self, parent):
+        Tkinter.Tk.__init__(self, parent) #super(Tkinter.Tk, self).__init__(parent)
+        self.parent = parent
+
+        self.on_quit_listener = lambda s: None
+        self.on_button_click_listener = lambda s: None
+        self.on_press_enter_listener = lambda s: None
+
+        self._initialize()
+
+    def _initialize(self):
+        """
+        Initialize the layout of the GUI
+        """
+        container1 = Tkinter.Frame(self)
+        self.filter_string = Tkinter.StringVar()
+        entry = Tkinter.Entry(container1, textvariable=self.filter_string)
+        button = Tkinter.Button(
+                container1, text="Filter", command=self.on_button_click)
+        container2 = Tkinter.Frame(self)
+        self.text = Tkinter.Text(container2, bg='#222', fg='#eee')
+        scrollbar = Tkinter.Scrollbar(container2)
+
+        self.grid()
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.bind('<Escape>', self.on_quit)
+
+        # Container1
+        container1.grid(row=0, column=0, sticky='EW')
+        container1.grid_columnconfigure(0, weight=1)
+
+        # Filter entry
+        entry.grid(row=0, column=0, sticky='EW')
+        entry.bind("<Return>", self.on_press_enter)
+
+        # Filter button
+        button.grid(row=0, column=1, sticky='EW')
+
+        # Container 2
+        container2.grid(row=1, column=0, sticky='NSEW')
+        container2.grid_rowconfigure(0, weight=1)
+        container2.grid_columnconfigure(0, weight=1)
+
+        # Text area
+        self.text.grid(row=0, column=0, sticky='NSEW')
+        self.text.config(yscrollcommand=scrollbar.set)
+        self.text.config(state=Tkinter.DISABLED)
+
+        # Scrollbar
+        scrollbar.grid(row=0, column=1, sticky='NS')
+        scrollbar.config(command=self.text.yview)
+
+    def on_quit(self, event):
+        self.quit()
+        self.on_quit_listener()
+
+    def on_button_click(self):
+        self.on_button_click_listener(self.filter_string.get())
+
+    def on_press_enter(self, event):
+        self.on_press_enter_listener(self.filter_string.get())
+
+    def schedule(self, function, *args, **kwargs):
+        """
+        Ask the event loop to schedule given function with arguments
+
+        @param function function to schedule
+        @param args positional arguments for the fuction
+        @param kwargs named arguments for the function
+        """
+        self.after_idle(function, *args, **kwargs)
+
+    def append_text(self, lines):
+        """
+        Append input lines into the text area and scroll to the bottom.
+
+        Additionally, raise the window on top of windows stack.
+
+        @param lines iterable containing the lines to be added.
+        """
+        scroll = False
+        self.text.config(state=Tkinter.NORMAL)
+        for line in lines:
+            scroll = True
+            self.text.insert(Tkinter.END, line)
+        self.text.config(state=Tkinter.DISABLED)
+
+        if scroll:
+            self.lift()
+            self.text.yview(Tkinter.MOVETO, 1.0)
+
+
+class Gui1(object):
 
     def __init__(self, queue):
         self.queue = queue
@@ -86,7 +183,7 @@ class Gui(object):
         self.root.mainloop()
 
     def _periodic(self):
-        self.append_text(extract_elemets(self.queue))
+        self.append_text(extract_elemets(self.queue, BATCH_LIMIT))
         self.root.after(POLLING_INTERVAL, self._periodic)
 
     def append_text(self, lines):
@@ -151,8 +248,23 @@ def regexp_filter(*exps):
 
 
 def filter_body(filename, interval, filters, queue, stop):
+    """
+    Body function of thread waiting for file content changes.
+
+    The thread will poll `filename` every `iterval` seconds looking for new
+    lines;  as soon as new lines are read from the file, these are filtered
+    depeding on `filters`, and the one matching given criteria are put into the
+    synchronized `queue`.
+
+    @param filename filename to poll
+    @param interval polling interval
+    @param filters iterable of regexp filters to apply to the file content
+    @param queue synchronized queue containing lines matching criteria
+    @param stop `threading.Event` object, used to stop the thread.
+    """
     for line in imap(regexp_filter(*filters), tail_f(filename)):
         if stop.isSet():
+            queue.put(STOP_MESSAGE)
             break
 
         if not line:
@@ -160,6 +272,21 @@ def filter_body(filename, interval, filters, queue, stop):
             continue
 
         queue.put(line)
+
+
+def gui_update_body(gui, queue):
+    """
+    Body function of the thread in charge of update the gui text area.
+
+    @param gui `Gui` object to update.
+    @param queue synchronized queue containing lines used to update the gui.
+    """
+    while True:
+        items = extract_elemets(BATCH_LIMIT)
+        if not all(item != STOP_MESSAGE for item in items):
+            break
+
+        gui.schedule(gui.append_text, items)
 
 
 def working_thread_listener(queue):
@@ -180,8 +307,6 @@ def apply_filter(queue):
     @param queue message queue shared with working thread.
     """
     queue.put(None)
-
-
 
 
 def _build_parser():
@@ -205,7 +330,9 @@ def _build_parser():
 
 
 def _main():
-    gui = Gui(quit, apply_filter)
+    gui = Gui(None)
+    gui.mainloop()
+
 
 def _main1():
     # Create the communication queue shared between working thread and Gui
@@ -231,4 +358,4 @@ def _main1():
 
 
 if __name__ == '__main__':
-    _main1();
+    _main();

@@ -13,6 +13,7 @@ from argparse import ArgumentParser
 STOP_MESSAGE = None
 POLLING_INTERVAL = 100 # milliseconds
 BATCH_LIMIT = 20
+NULL_LISTENER = lambda *a, **kw: None
 
 
 def extract_elemets(queue, limit):
@@ -36,9 +37,9 @@ class Gui(Tkinter.Tk):
         Tkinter.Tk.__init__(self, parent) #super(Tkinter.Tk, self).__init__(parent)
         self.parent = parent
 
-        self.on_quit_listener = lambda s: None
-        self.on_button_click_listener = lambda s: None
-        self.on_press_enter_listener = lambda s: None
+        self.on_quit_listener = NULL_LISTENER
+        self.on_button_click_listener = NULL_LISTENER
+        self.on_press_enter_listener = NULL_LISTENER
 
         self._initialize()
 

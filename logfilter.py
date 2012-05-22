@@ -78,6 +78,7 @@ class Gui(Tkinter.Tk):
         container1.grid_columnconfigure(0, weight=1)
 
         # Filter entry
+        entry.focus_force()
         entry.grid(row=0, column=0, sticky='EW')
         entry.bind("<Return>", self.on_press_enter)
 

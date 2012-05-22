@@ -120,23 +120,18 @@ class Gui(Tkinter.Tk):
 
     @debug
     def on_quit(self, event):
-        (func, args, kwargs) = self.on_quit_listener
-        func(*args, **kwargs)
-        self.quit()
+        self.on_close()
 
     @debug
     def on_button_click(self):
         filter_string = self.filter_string.get()
         (func, args, kwargs) = self.on_new_filter_listener
-        args = [filter_string] + list(args)
+        args = [(filter_string,)] + list(args)
         func(*args, **kwargs)
 
     @debug
     def on_press_enter(self, event):
-        filter_string = self.filter_string.get()
-        (func, args, kwargs) = self.on_new_filter_listener
-        args = [filter_string] + list(args)
-        func(*args, **kwargs)
+        self.on_button_click()
 
     def raise_(self):
         """
@@ -218,19 +213,19 @@ def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
     stop = None
     worker = None
     while True:
-        filter_string = filter_queue.get()
-        print 'Received filter: {0}'.format(filter_string)
+        filters = filter_queue.get()
+        print 'Received filters: {0}'.format(filters)
         if worker is not None:
             stop.set()
             worker.join()
 
-        if filter_string == STOP_MESSAGE:
+        if filters == STOP_MESSAGE:
             break
 
         stop = threading.Event()
         worker = threading.Thread(
             target=file_observer_body,
-            args=(filename, interval, (filter_string,), lines_queue, stop))
+            args=(filename, interval, filters, lines_queue, stop))
         worker.start()
 
 
@@ -331,7 +326,7 @@ def quit(filter_queue, lines_queue):
 
 
 @debug
-def apply_filter(filter_string, gui, filter_queue):
+def apply_filters(filters, gui, filter_queue):
     """
     Invoked by the GUI when a new filter is entered.
 
@@ -339,11 +334,11 @@ def apply_filter(filter_string, gui, filter_queue):
     queue.
 
     @param gui `Gui` object to update.
-    @param filter_string string filter
+    @param filters collection of string filters
     @param filter_queue message queue shared with working thread.
     """
     gui.clear_text()
-    filter_queue.put(filter_string)
+    filter_queue.put(filter(None, filters))
 
 
 def _build_parser():
@@ -373,7 +368,7 @@ def _main():
 
     gui = Gui(None)
     gui.register_listener('quit', quit, filter_queue, lines_queue)
-    gui.register_listener('new_filter', apply_filter, gui, filter_queue)
+    gui.register_listener('new_filter', apply_filters, gui, filter_queue)
 
     filter_thread_spawner = threading.Thread(
             target=filter_thread_spawner_body,

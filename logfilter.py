@@ -64,8 +64,11 @@ class Gui(Tkinter.Tk):
         button = Tkinter.Button(
                 container1, text="Filter", command=self.on_button_click)
         container2 = Tkinter.Frame(self)
-        self.text = Tkinter.Text(container2, bg='#222', fg='#eee')
-        scrollbar = Tkinter.Scrollbar(container2)
+        self.text = Tkinter.Text(
+                container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
+        scrollbar1 = Tkinter.Scrollbar(container2)
+        container3 = Tkinter.Frame(self)
+        scrollbar2 = Tkinter.Scrollbar(container3, orient=Tkinter.HORIZONTAL)
 
         self.grid()
         self.grid_columnconfigure(0, weight=1)
@@ -92,12 +95,22 @@ class Gui(Tkinter.Tk):
 
         # Text area
         self.text.grid(row=0, column=0, sticky='NSEW')
-        self.text.config(yscrollcommand=scrollbar.set)
+        self.text.config(yscrollcommand=scrollbar1.set)
+        self.text.config(xscrollcommand=scrollbar2.set)
         self.text.config(state=Tkinter.DISABLED)
 
-        # Scrollbar
-        scrollbar.grid(row=0, column=1, sticky='NS')
-        scrollbar.config(command=self.text.yview)
+        # Vertical Scrollbar
+        scrollbar1.grid(row=0, column=1, sticky='NS')
+        scrollbar1.config(command=self.text.yview)
+
+        # Container 3
+        container3.grid(row=2, column=0, sticky='EW')
+        container3.grid_columnconfigure(0, weight=1)
+        
+        # Horizontal scrollbar
+        scrollbar2.grid()
+        scrollbar2.grid(row=0, column=0, sticky='EW')
+        scrollbar2.config(command=self.text.xview)
 
     @debug
     def on_close(self):

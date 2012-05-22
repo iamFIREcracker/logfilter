@@ -48,21 +48,21 @@ def extract_elemets(queue, limit):
 
 class Gui(Tkinter.Tk):
 
-    def __init__(self, parent):
+    def __init__(self, parent, **kwargs):
         Tkinter.Tk.__init__(self, parent) #super(Tkinter.Tk, self).__init__(parent)
         self.parent = parent
 
         self.on_quit_listener = (NULL_LISTENER, (), {})
         self.on_new_filter_listener = (NULL_LISTENER, (), {})
 
-        self._initialize()
+        self._initialize(**kwargs)
 
-    def _initialize(self):
+    def _initialize(self, filters):
         """
         Initialize the layout of the GUI
         """
         container1 = Tkinter.Frame(self)
-        self.filter_strings = [Tkinter.StringVar() for i in xrange(NUM_FILTERS)]
+        self.filter_strings = [Tkinter.StringVar() for i in xrange(filters)]
         entries = [Tkinter.Entry(container1, textvariable=filter_string)
                     for filter_string in self.filter_strings]
         button = Tkinter.Button(
@@ -361,6 +361,9 @@ def _build_parser():
             '-i', '--interval', dest='interval', required=True, type=float,
             help='Timeout interval to wait before checking for updates',
             metavar='INTERVAL')
+    parser.add_argument(
+            '-n', '--num-filters', dest='filters', default=1, type=int,
+            help='Number of filters to apply to log file', metavar='FILTERS')
 
     return parser
 
@@ -372,7 +375,7 @@ def _main():
     filter_queue = Queue.Queue()
     lines_queue = Queue.Queue()
 
-    gui = Gui(None)
+    gui = Gui(None, filters=args.filters)
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
 

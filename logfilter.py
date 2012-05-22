@@ -16,6 +16,9 @@ STOP_MESSAGE = None
 """Number of lines to collect before telling the gui to refresh."""
 BATCH_LIMIT = 50
 
+"""Number of string filters."""
+NUM_FILTERS = 1
+
 """Default event listener."""
 NULL_LISTENER = lambda *a, **kw: None
 
@@ -59,8 +62,9 @@ class Gui(Tkinter.Tk):
         Initialize the layout of the GUI
         """
         container1 = Tkinter.Frame(self)
-        self.filter_string = Tkinter.StringVar()
-        entry = Tkinter.Entry(container1, textvariable=self.filter_string)
+        self.filter_strings = [Tkinter.StringVar() for i in xrange(NUM_FILTERS)]
+        entries = [Tkinter.Entry(container1, textvariable=filter_string)
+                    for filter_string in self.filter_strings]
         button = Tkinter.Button(
                 container1, text="Filter", command=self.on_button_click)
         container2 = Tkinter.Frame(self)
@@ -78,15 +82,17 @@ class Gui(Tkinter.Tk):
 
         # Container1
         container1.grid(row=0, column=0, sticky='EW')
-        container1.grid_columnconfigure(0, weight=1)
+        for i in xrange(len(entries)):
+            container1.grid_columnconfigure(i, weight=1)
 
         # Filter entry
-        entry.focus_force()
-        entry.grid(row=0, column=0, sticky='EW')
-        entry.bind("<Return>", self.on_press_enter)
+        for (i, entry) in enumerate(entries):
+            entry.focus_force()
+            entry.grid(row=0, column=i, sticky='EW')
+            entry.bind("<Return>", self.on_press_enter)
 
         # Filter button
-        button.grid(row=0, column=1, sticky='EW')
+        button.grid(row=0, column=len(entries), sticky='EW')
 
         # Container 2
         container2.grid(row=1, column=0, sticky='NSEW')
@@ -106,7 +112,7 @@ class Gui(Tkinter.Tk):
         # Container 3
         container3.grid(row=2, column=0, sticky='EW')
         container3.grid_columnconfigure(0, weight=1)
-        
+
         # Horizontal scrollbar
         scrollbar2.grid()
         scrollbar2.grid(row=0, column=0, sticky='EW')
@@ -124,9 +130,9 @@ class Gui(Tkinter.Tk):
 
     @debug
     def on_button_click(self):
-        filter_string = self.filter_string.get()
+        filter_strings = map(lambda s: s.get(), self.filter_strings)
         (func, args, kwargs) = self.on_new_filter_listener
-        args = [(filter_string,)] + list(args)
+        args = [filter_strings] + list(args)
         func(*args, **kwargs)
 
     @debug

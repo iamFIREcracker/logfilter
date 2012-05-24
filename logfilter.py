@@ -10,14 +10,19 @@ from itertools import ifilter
 from argparse import ArgumentParser
 
 
-"""Stop message used to stop threads."""
-STOP_MESSAGE = None
 
 """Number of lines to collect before telling the gui to refresh."""
 BATCH_LIMIT = 50
 
 """Number of string filters."""
 NUM_FILTERS = 1
+
+"""Number of lines to display on screen."""
+LINES_LIMIT = 8000
+
+
+"""Stop message used to stop threads."""
+STOP_MESSAGE = None
 
 """Default event listener."""
 NULL_LISTENER = lambda *a, **kw: None
@@ -371,10 +376,11 @@ def _build_parser():
             help='Timeout interval to wait before checking for updates',
             metavar='INTERVAL')
     parser.add_argument(
-            '-n', '--num-filters', dest='filters', default=1, type=int,
-            help='Number of filters to apply to log file', metavar='FILTERS')
+            '-n', '--num-filters', dest='filters', default=NUM_FILTERS,
+            type=int, help='Number of filters to apply to log file',
+            metavar='FILTERS')
     parser.add_argument(
-            '-l', '--limit', dest='limit', default=8000, type=int,
+            '-l', '--limit', dest='limit', default=LINES_LIMIT, type=int,
             help='Number of lines to display in the text area', metavar='LIMIT')
 
     return parser

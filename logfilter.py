@@ -57,7 +57,7 @@ class Gui(Tkinter.Tk):
 
         self._initialize(**kwargs)
 
-    def _initialize(self, filters):
+    def _initialize(self, filters, limit):
         """
         Initialize the layout of the GUI
         """
@@ -70,6 +70,8 @@ class Gui(Tkinter.Tk):
         container2 = Tkinter.Frame(self)
         self.text = Tkinter.Text(
                 container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
+        self._limit = limit;
+        self._lines = 0
         scrollbar1 = Tkinter.Scrollbar(container2)
         container3 = Tkinter.Frame(self)
         scrollbar2 = Tkinter.Scrollbar(container3, orient=Tkinter.HORIZONTAL)
@@ -185,6 +187,7 @@ class Gui(Tkinter.Tk):
         self.text.config(state=Tkinter.NORMAL)
         self.text.delete(1.0, Tkinter.END)
         self.text.config(state=Tkinter.DISABLED)
+        self._lines = 0
 
     def append_text(self, lines):
         """
@@ -199,6 +202,12 @@ class Gui(Tkinter.Tk):
         for line in lines:
             scroll = True
             self.text.insert(Tkinter.END, line)
+            self._lines += 1
+            if self._lines <= self._limit:
+                continue
+
+            self.text.delete(1.0, '{0}+1l'.format(1.0))
+            self._lines -= 1
         self.text.config(state=Tkinter.DISABLED)
 
         if scroll:
@@ -364,6 +373,9 @@ def _build_parser():
     parser.add_argument(
             '-n', '--num-filters', dest='filters', default=1, type=int,
             help='Number of filters to apply to log file', metavar='FILTERS')
+    parser.add_argument(
+            '-l', '--limit', dest='limit', default=8000, type=int,
+            help='Number of lines to display in the text area', metavar='LIMIT')
 
     return parser
 
@@ -375,7 +387,7 @@ def _main():
     filter_queue = Queue.Queue()
     lines_queue = Queue.Queue()
 
-    gui = Gui(None, filters=args.filters)
+    gui = Gui(None, filters=args.filters, limit=args.limit)
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
 

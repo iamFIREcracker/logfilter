@@ -6,8 +6,8 @@ import time
 import threading
 import Tkinter
 import Queue
-from itertools import ifilter
 from argparse import ArgumentParser
+from itertools import ifilter
 
 
 
@@ -19,6 +19,16 @@ NUM_FILTERS = 1
 
 """Number of lines to display on screen."""
 LINES_LIMIT = 8000
+
+"""Tag color palette."""
+TAG_PALETTE = (
+        ('red', '#E52222'),
+        ('green', '#A6E32D'),
+        ('yellow', '#FD951E'),
+        ('blue', '#C48DFF'),
+        ('magenta', '#FA2573'),
+        ('cyan', '#67D9F0')
+    )
 
 
 """Stop message used to stop threads."""
@@ -111,6 +121,8 @@ class Gui(Tkinter.Tk):
         self.text.config(yscrollcommand=scrollbar1.set)
         self.text.config(xscrollcommand=scrollbar2.set)
         self.text.config(state=Tkinter.DISABLED)
+        map(lambda (name, color): self.text.tag_configure(name, foreground=color),
+            TAG_PALETTE)
 
         # Vertical Scrollbar
         scrollbar1.grid(row=0, column=1, sticky='NS')
@@ -138,6 +150,7 @@ class Gui(Tkinter.Tk):
     @debug
     def on_button_click(self):
         filter_strings = map(lambda s: s.get(), self.filter_strings)
+        self._cached_filters = map(re.compile, filter_strings)
         (func, args, kwargs) = self.on_new_filter_listener
         args = [filter_strings] + list(args)
         func(*args, **kwargs)
@@ -206,13 +219,24 @@ class Gui(Tkinter.Tk):
         self.text.config(state=Tkinter.NORMAL)
         for line in lines:
             scroll = True
-            self.text.insert(Tkinter.END, line)
-            self._lines += 1
-            if self._lines <= self._limit:
-                continue
+            print TAG_PALETTE
+            for ((tag, color), regexp) in zip(TAG_PALETTE, self._cached_filters):
+                m = regexp.search(line)
+                if m is None:
+                    continue
 
-            self.text.delete(1.0, '{0}+1l'.format(1.0))
-            self._lines -= 1
+                print tag, color, regexp
+                self.text.insert(Tkinter.END, line[:m.start()])
+                self.text.insert(Tkinter.END, line[m.start():m.end()], tag)
+                self.text.insert(Tkinter.END, line[m.end():])
+
+                self._lines += 1
+                if self._lines <= self._limit:
+                    break
+
+                self.text.delete(1.0, '{0}+1l'.format(1.0))
+                self._lines -= 1
+                break
         self.text.config(state=Tkinter.DISABLED)
 
         if scroll:
@@ -282,7 +306,7 @@ def regexp_filter(*exps):
 
         @param gen string to be tested with the outer level criteria.
         """
-        return line == '' or any(map(lambda r: r.match(line), regexps))
+        return line == '' or any(map(lambda r: r.search(line), regexps))
 
     return wrapper
 

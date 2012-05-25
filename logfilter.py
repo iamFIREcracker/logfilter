@@ -219,13 +219,12 @@ class Gui(Tkinter.Tk):
         self.text.config(state=Tkinter.NORMAL)
         for line in lines:
             scroll = True
-            print TAG_PALETTE
             for ((tag, color), regexp) in zip(TAG_PALETTE, self._cached_filters):
                 m = regexp.search(line)
                 if m is None:
                     continue
 
-                print tag, color, regexp
+                #print tag, color, regexp
                 self.text.insert(Tkinter.END, line[:m.start()])
                 self.text.insert(Tkinter.END, line[m.start():m.end()], tag)
                 self.text.insert(Tkinter.END, line[m.end():])

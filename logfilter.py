@@ -11,6 +11,9 @@ from argparse import ArgumentParser
 
 
 
+"""Application title"""
+TITLE = 'logfilter: {filename}'
+
 """Number of lines to collect before telling the gui to refresh."""
 BATCH_LIMIT = 50
 
@@ -394,6 +397,7 @@ def _main():
     lines_queue = Queue.Queue()
 
     gui = Gui(None, filters=args.filters, limit=args.limit)
+    gui.title(TITLE.format(filename=args.filename))
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
 

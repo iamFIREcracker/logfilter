@@ -244,11 +244,9 @@ class Gui(Tkinter.Tk):
                 self.text.insert(Tkinter.END, line[m.end():])
 
                 self._lines += 1
-                if self._lines <= self._limit:
-                    break
-
-                self.text.delete(1.0, '{0}+1l'.format(1.0))
-                self._lines -= 1
+                if self._lines > self._limit:
+                    self.text.delete(1.0, 2.0)
+                    self._lines -= 1
                 break
         self.text.config(state=Tkinter.DISABLED)
 

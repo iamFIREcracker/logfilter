@@ -410,6 +410,8 @@ def _main():
     gui.title(TITLE.format(filename=args.filename))
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
+    if args.filters:
+        gui.on_button_click()
 
     filter_thread_spawner = threading.Thread(
             target=filter_thread_spawner_body,

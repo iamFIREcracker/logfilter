@@ -54,6 +54,17 @@ def extract_elemets(queue, limit):
         return
 
 
+def StringVar(default):
+    """
+    Return a new (initialized) `Tkinter.StringVar.
+
+    @param default default string value
+    """
+    s = Tkinter.StringVar()
+    s.set(default)
+    return s
+
+
 class Gui(Tkinter.Tk):
 
     def __init__(self, parent, **kwargs):
@@ -70,7 +81,7 @@ class Gui(Tkinter.Tk):
         Initialize the layout of the GUI
         """
         container1 = Tkinter.Frame(self)
-        self.filter_strings = [Tkinter.StringVar() for i in xrange(filters)]
+        self.filter_strings = [StringVar(f) for f in filters]
         entries = [Tkinter.Entry(container1, textvariable=filter_string)
                     for filter_string in self.filter_strings]
         button = Tkinter.Button(
@@ -374,12 +385,14 @@ def _build_parser():
             help='Timeout interval to wait before checking for updates',
             metavar='INTERVAL')
     parser.add_argument(
-            '-n', '--num-filters', dest='filters', default=NUM_FILTERS,
+            '-n', '--num-filters', dest='num_filters', default=NUM_FILTERS,
             type=int, help='Number of filters to apply to log file',
-            metavar='FILTERS')
+            metavar='NUM_FILTERS')
     parser.add_argument(
             '-l', '--limit', dest='limit', default=LINES_LIMIT, type=int,
             help='Number of lines to display in the text area', metavar='LIMIT')
+    parser.add_argument(
+            'filters', nargs='*', help='Filter presets', metavar='FILTERS')
 
     return parser
 
@@ -387,11 +400,15 @@ def _build_parser():
 def _main():
     parser = _build_parser()
     args = parser.parse_args()
+    # create the array of filters
+    num_filters = max(len(args.filters), args.num_filters)
+    empty_filters = num_filters - len(args.filters)
+    filters = args.filters + [''] * empty_filters
 
     filter_queue = Queue.Queue()
     lines_queue = Queue.Queue()
 
-    gui = Gui(None, filters=args.filters, limit=args.limit)
+    gui = Gui(None, filters=filters, limit=args.limit)
     gui.title(TITLE.format(filename=args.filename))
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)

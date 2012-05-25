@@ -218,11 +218,9 @@ class Gui(Tkinter.Tk):
             scroll = True
             self.text.insert(Tkinter.END, line)
             self._lines += 1
-            if self._lines <= self._limit:
-                continue
-
-            self.text.delete(1.0, '{0}+1l'.format(1.0))
-            self._lines -= 1
+            if self._lines > self._limit:
+                self.text.delete(1.0, 2.0)
+                self._lines -= 1
 
         if scroll:
             self.raise_()

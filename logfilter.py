@@ -113,7 +113,6 @@ class Gui(Tkinter.Tk):
         self.text.grid(row=0, column=0, sticky='NSEW')
         self.text.config(yscrollcommand=scrollbar1.set)
         self.text.config(xscrollcommand=scrollbar2.set)
-        self.text.config(state=Tkinter.DISABLED)
 
         # Vertical Scrollbar
         scrollbar1.grid(row=0, column=1, sticky='NS')
@@ -192,9 +191,7 @@ class Gui(Tkinter.Tk):
         """
         Delete all the text contained in the text area.
         """
-        self.text.config(state=Tkinter.NORMAL)
         self.text.delete(1.0, Tkinter.END)
-        self.text.config(state=Tkinter.DISABLED)
         self._lines = 0
 
     def append_text(self, lines):
@@ -206,7 +203,6 @@ class Gui(Tkinter.Tk):
         @param lines iterable containing the lines to be added.
         """
         scroll = False
-        self.text.config(state=Tkinter.NORMAL)
         for line in lines:
             scroll = True
             self.text.insert(Tkinter.END, line)
@@ -216,7 +212,6 @@ class Gui(Tkinter.Tk):
 
             self.text.delete(1.0, '{0}+1l'.format(1.0))
             self._lines -= 1
-        self.text.config(state=Tkinter.DISABLED)
 
         if scroll:
             self.raise_()

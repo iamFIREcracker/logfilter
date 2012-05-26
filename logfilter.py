@@ -34,12 +34,14 @@ TAG_PALETTE = (
         ('cyan', '#67D9F0')
     )
 
-
 """Stop message used to stop threads."""
 STOP_MESSAGE = None
 
 """Default event listener."""
 NULL_LISTENER = lambda *a, **kw: None
+
+"""Tag object used by the `Text` widget to hanndle string coloring."""
+Tag = namedtuple('Tag', 'name pattern settings'.split())
 
 
 def debug(func):
@@ -201,8 +203,6 @@ class Gui(Tkinter.Tk):
         self.text.append(lines)
         self.raise_()
 
-
-Tag = namedtuple('Tag', 'name pattern settings'.split())
 
 class Text(Tkinter.Frame):
     """

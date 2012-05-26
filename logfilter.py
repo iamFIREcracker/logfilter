@@ -415,7 +415,7 @@ def file_observer_body(filename, interval, filters, lines_queue, stop):
             break
 
         if (not line and lines) or (len(lines) == BATCH_LIMIT):
-            #lines_queue.put(lines)
+            lines_queue.put(lines)
             lines = []
 
         if not line:

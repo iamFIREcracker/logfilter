@@ -55,21 +55,6 @@ def debug(func):
     return wrapper
 
 
-def extract_elemets(queue, limit):
-    """
-    Extract at most `limit` elements from the queue, without blocking.
-
-    @param queue synchronized blocking queue
-    @param limit maximum number of elements to extract
-    """
-    limit = min(queue.qsize(), limit)
-    try:
-        while limit:
-            yield queue.get(0)
-    except Queue.Empty:
-        return
-
-
 def StringVar(default):
     """
     Return a new (initialized) `Tkinter.StringVar.

@@ -350,12 +350,13 @@ def tail_f(filename):
     """
     with open(filename) as f:
         while True:
-            where = f.tell()
-            line = f.readline()
-            if not line:
-                f.seek(where)
+            for line in f:
+                yield line
+            yield ""
 
-            yield line
+            # Kind of rewind
+            where = f.tell()
+            f.seek(where)
 
 
 def regexp_filter(*exps):

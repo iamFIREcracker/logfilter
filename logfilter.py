@@ -7,6 +7,7 @@ import threading
 import Tkinter
 import Queue
 from argparse import ArgumentParser
+from collections import namedtuple
 from itertools import ifilter
 
 
@@ -97,8 +98,7 @@ class Gui(Tkinter.Tk):
         button = Tkinter.Button(
                 container1, text="Filter", command=self.on_button_click)
         container2 = Tkinter.Frame(self)
-        self.text = Tkinter.Text(
-                container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
+        self.text = Text(container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
         self._limit = limit;
         self._lines = 0
         scrollbar1 = Tkinter.Scrollbar(container2)
@@ -135,8 +135,6 @@ class Gui(Tkinter.Tk):
         self.text.config(yscrollcommand=scrollbar1.set)
         self.text.config(xscrollcommand=scrollbar2.set)
         self.text.config(state=Tkinter.DISABLED)
-        map(lambda (name, color): self.text.tag_configure(name, foreground=color),
-            TAG_PALETTE)
 
         # Vertical Scrollbar
         scrollbar1.grid(row=0, column=1, sticky='NS')
@@ -164,7 +162,9 @@ class Gui(Tkinter.Tk):
     @debug
     def on_button_click(self):
         filter_strings = map(lambda s: s.get(), self.filter_strings)
-        self._cached_filters = map(re.compile, filter_strings)
+        self.text.configure_tags(
+                Tag(n, f, {'foreground': c})
+                    for ((n, c), f) in zip(TAG_PALETTE, filter_strings))
         (func, args, kwargs) = self.on_new_filter_listener
         args = [filter_strings] + list(args)
         func(*args, **kwargs)
@@ -233,26 +233,82 @@ class Gui(Tkinter.Tk):
         self.text.config(state=Tkinter.NORMAL)
         for line in lines:
             scroll = True
-            for ((tag, color), regexp) in zip(TAG_PALETTE, self._cached_filters):
-                m = regexp.search(line)
-                if m is None:
-                    continue
+            self.text.insert(Tkinter.END, line)
 
-                #print tag, color, regexp
-                self.text.insert(Tkinter.END, line[:m.start()])
-                self.text.insert(Tkinter.END, line[m.start():m.end()], tag)
-                self.text.insert(Tkinter.END, line[m.end():])
-
-                self._lines += 1
-                if self._lines > self._limit:
-                    self.text.delete(1.0, 2.0)
-                    self._lines -= 1
-                break
+            self._lines += 1
+            if self._lines > self._limit:
+                # delete from row 1, column 0, to row 2, column 0 (first line)
+                self.text.delete(1.0, 2.0)
+                self._lines -= 1
         self.text.config(state=Tkinter.DISABLED)
 
         if scroll:
             self.raise_()
             self.scroll_bottom()
+
+
+Tag = namedtuple('Tag', 'name pattern settings'.split())
+
+class Text(Tkinter.Text):
+    """
+    Extension of the `Tk.Text` widget which add support to colored strings.
+
+    The main goal of the widget is to extend the `#insert` method to add support
+    for string coloring, depending on an input tags.
+    """
+
+    def __init__(self, parent, **kwargs):
+        Tkinter.Text.__init__(self, parent, **kwargs)
+
+        self._tags = []
+
+    def configure_tags(self, tags):
+        """
+        Configure text tags.
+
+        @param tags collection of `Tag` items
+        """
+        self._tags = list(tags)
+        map(lambda t: self.tag_config(t.name, t.settings), self._tags)
+        print self.tag_names()
+
+
+    def insert(self, index, line):
+        """
+        Invoke the parent method, and then highlight matching strings, if any.
+
+        @param insert index
+        @param line line to add
+        """
+        start = self.index('{0} - 1 lines'.format(Tkinter.END))
+        end = self.index(Tkinter.END)
+
+        Tkinter.Text.insert(self, index, line)
+
+        def highlight_tag(tag):
+            """
+            Helper function simply used to adapt function signatures.
+            """
+            self._highlight_pattern(start, end, tag.pattern, tag.name)
+
+        map(highlight_tag, list(self._tags))
+
+    def _highlight_pattern(self, start, end, pattern, tag_name):
+        """
+        Highlight the input pattern with the settings associated with the tag.
+
+        @param start start search index
+        @param stop stop search index
+        @param pattern string pattern matching the tag
+        @param tag_name name of the tag to associate with matching strings
+        """
+        count = Tkinter.IntVar()
+        index = self.search(pattern, start, end, count=count, regexp=True)
+        if not index:
+            return
+
+        match_end = '{0}+{1}c'.format(index, count.get())
+        self.tag_add(tag_name, index, match_end)
 
 
 @debug

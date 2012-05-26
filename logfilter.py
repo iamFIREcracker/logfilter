@@ -12,7 +12,7 @@ from itertools import ifilter
 
 
 
-"""Application title"""
+"""Application title template"""
 TITLE = 'logfilter: {filename}'
 
 """Number of lines to collect before telling the gui to refresh."""
@@ -43,6 +43,9 @@ NULL_LISTENER = lambda *a, **kw: None
 
 
 def debug(func):
+    """
+    Decorator which prints a message before and after a function execution.
+    """
     def wrapper(*args, **kwargs):
         print '{0}: entering'.format(func.func_name)
         func(*args, **kwargs)
@@ -87,7 +90,7 @@ class Gui(Tkinter.Tk):
 
         self._initialize(**kwargs)
 
-    def _initialize(self, filters, limit):
+    def _initialize(self, filters, scroll_limit):
         """
         Initialize the layout of the GUI
         """
@@ -97,13 +100,10 @@ class Gui(Tkinter.Tk):
                     for filter_string in self.filter_strings]
         button = Tkinter.Button(
                 container1, text="Filter", command=self.on_button_click)
+
         container2 = Tkinter.Frame(self)
         self.text = Text(container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
-        self._limit = limit;
-        self._lines = 0
-        scrollbar1 = Tkinter.Scrollbar(container2)
-        container3 = Tkinter.Frame(self)
-        scrollbar2 = Tkinter.Scrollbar(container3, orient=Tkinter.HORIZONTAL)
+        self.text.configure_scroll_limit(scroll_limit)
 
         self.grid()
         self.grid_columnconfigure(0, weight=1)
@@ -115,39 +115,16 @@ class Gui(Tkinter.Tk):
         container1.grid(row=0, column=0, sticky='EW')
         for i in xrange(len(entries)):
             container1.grid_columnconfigure(i, weight=1)
-
-        # Filter entry
         for (i, entry) in enumerate(entries):
             entry.focus_force()
             entry.grid(row=0, column=i, sticky='EW')
             entry.bind("<Return>", self.on_press_enter)
-
-        # Filter button
         button.grid(row=0, column=len(entries), sticky='EW')
 
-        # Container 2
-        container2.grid(row=1, column=0, sticky='NSEW')
-        container2.grid_rowconfigure(0, weight=1)
+        # Container2
+        container2.grid(row=1, column=0, sticky='EW')
         container2.grid_columnconfigure(0, weight=1)
-
-        # Text area
         self.text.grid(row=0, column=0, sticky='NSEW')
-        self.text.config(yscrollcommand=scrollbar1.set)
-        self.text.config(xscrollcommand=scrollbar2.set)
-        self.text.config(state=Tkinter.DISABLED)
-
-        # Vertical Scrollbar
-        scrollbar1.grid(row=0, column=1, sticky='NS')
-        scrollbar1.config(command=self.text.yview)
-
-        # Container 3
-        container3.grid(row=2, column=0, sticky='EW')
-        container3.grid_columnconfigure(0, weight=1)
-
-        # Horizontal scrollbar
-        scrollbar2.grid()
-        scrollbar2.grid(row=0, column=0, sticky='EW')
-        scrollbar2.config(command=self.text.xview)
 
     @debug
     def on_close(self):
@@ -180,12 +157,6 @@ class Gui(Tkinter.Tk):
         self.attributes('-topmost', True)
         self.attributes('-topmost', False)
 
-    def scroll_bottom(self):
-        """
-        Scroll to the bottom of the text area.
-        """
-        self.text.yview(Tkinter.MOVETO, 1.0)
-
     def register_listener(self, event, func, *args, **kwargs):
         """
         Register a listener for the specified named event.
@@ -216,9 +187,7 @@ class Gui(Tkinter.Tk):
         """
         Delete all the text contained in the text area.
         """
-        self.text.config(state=Tkinter.NORMAL)
-        self.text.delete(1.0, Tkinter.END)
-        self.text.config(state=Tkinter.DISABLED)
+        self.text.clear()
         self._lines = 0
 
     def append_text(self, lines):
@@ -229,27 +198,13 @@ class Gui(Tkinter.Tk):
 
         @param lines iterable containing the lines to be added.
         """
-        scroll = False
-        self.text.config(state=Tkinter.NORMAL)
-        for line in lines:
-            scroll = True
-            self.text.insert(Tkinter.END, line)
-
-            self._lines += 1
-            if self._lines > self._limit:
-                # delete from row 1, column 0, to row 2, column 0 (first line)
-                self.text.delete(1.0, 2.0)
-                self._lines -= 1
-        self.text.config(state=Tkinter.DISABLED)
-
-        if scroll:
-            self.raise_()
-            self.scroll_bottom()
+        self.text.append(lines)
+        self.raise_()
 
 
 Tag = namedtuple('Tag', 'name pattern settings'.split())
 
-class Text(Tkinter.Text):
+class Text(Tkinter.Frame):
     """
     Extension of the `Tk.Text` widget which add support to colored strings.
 
@@ -258,9 +213,44 @@ class Text(Tkinter.Text):
     """
 
     def __init__(self, parent, **kwargs):
-        Tkinter.Text.__init__(self, parent, **kwargs)
-
+        Tkinter.Frame.__init__(self, parent)
+        self._scroll_limit = LINES_LIMIT
+        self._num_lines = 0
         self._tags = []
+
+        self._initialize(**kwargs)
+
+    def _initialize(self, **kwargs):
+        """
+        Initialize the text widget.
+        """
+        text = Tkinter.Text(self, **kwargs)
+        vert_scroll = Tkinter.Scrollbar(self)
+        horiz_scroll = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        text.grid(row=0, column=0, sticky='NSEW')
+        text.config(yscrollcommand=vert_scroll.set)
+        text.config(xscrollcommand=horiz_scroll.set)
+        text.config(state=Tkinter.DISABLED)
+
+        vert_scroll.grid(row=0, column=1, sticky='NS')
+        vert_scroll.config(command=text.yview)
+
+        horiz_scroll.grid(row=1, column=0, sticky='EW')
+        horiz_scroll.config(command=text.xview)
+
+        self.text = text
+
+    def configure_scroll_limit(self, scroll_limit):
+        """
+        Chache the widget scroll limit.
+
+        @param limit new scroll limit.
+        """
+        self._scroll_limit = scroll_limit
 
     def configure_tags(self, tags):
         """
@@ -269,21 +259,23 @@ class Text(Tkinter.Text):
         @param tags collection of `Tag` items
         """
         self._tags = list(tags)
-        map(lambda t: self.tag_config(t.name, t.settings), self._tags)
-        print self.tag_names()
+        map(lambda t: self.text.tag_config(t.name, t.settings), self._tags)
 
-
-    def insert(self, index, line):
+    def clear(self):
         """
-        Invoke the parent method, and then highlight matching strings, if any.
-
-        @param insert index
-        @param line line to add
+        Clear the text widget.
         """
-        start = self.index('{0} - 1 lines'.format(Tkinter.END))
-        end = self.index(Tkinter.END)
+        self.text.config(state=Tkinter.NORMAL)
+        self.text.delete(1.0, Tkinter.END)
+        self.text.config(state=Tkinter.DISABLED)
+        self._lines = 0
 
-        Tkinter.Text.insert(self, index, line)
+    def append(self, lines):
+        """
+        Append given lines to the text widget and try to color them.
+
+        @param lines lines to add
+        """
 
         def highlight_tag(tag):
             """
@@ -291,11 +283,33 @@ class Text(Tkinter.Text):
             """
             self._highlight_pattern(start, end, tag.pattern, tag.name)
 
-        map(highlight_tag, list(self._tags))
+        self.text.config(state=Tkinter.NORMAL)
+
+        for line in lines:
+            start = self.text.index('{0} - 1 lines'.format(Tkinter.END))
+            end = self.text.index(Tkinter.END)
+
+            self.text.insert(Tkinter.END, line)
+            map(highlight_tag, list(self._tags))
+
+            self._lines += 1
+            if self._lines > self._scroll_limit:
+                # delete from row 1, column 0, to row 2, column 0 (first line)
+                self.text.delete(1.0, 2.0)
+                self._lines -= 1
+
+        self.text.config(state=Tkinter.DISABLED)
+
+        # Scroll to the bottom
+        self.text.yview(Tkinter.MOVETO, 1.0)
+
 
     def _highlight_pattern(self, start, end, pattern, tag_name):
         """
         Highlight the input pattern with the settings associated with the tag.
+
+        Given a tag and a patter, the function will match only the first
+        occurrence of the patter.
 
         @param start start search index
         @param stop stop search index
@@ -303,12 +317,12 @@ class Text(Tkinter.Text):
         @param tag_name name of the tag to associate with matching strings
         """
         count = Tkinter.IntVar()
-        index = self.search(pattern, start, end, count=count, regexp=True)
+        index = self.text.search(pattern, start, end, count=count, regexp=True)
         if not index:
             return
 
         match_end = '{0}+{1}c'.format(index, count.get())
-        self.tag_add(tag_name, index, match_end)
+        self.text.tag_add(tag_name, index, match_end)
 
 
 @debug
@@ -490,7 +504,7 @@ def _main():
     filter_queue = Queue.Queue()
     lines_queue = Queue.Queue()
 
-    gui = Gui(None, filters=filters, limit=args.limit)
+    gui = Gui(None, filters=filters, scroll_limit=args.limit)
     gui.title(TITLE.format(filename=args.filename))
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)

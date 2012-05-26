@@ -426,28 +426,6 @@ def _main():
     gui.mainloop()
 
 
-def _main1():
-    # Create the communication queue shared between working thread and Gui
-    com_queue = Queue.Queue()
-
-    # Create and start the working thread
-    stop = threading.Event()
-    parser = _build_parser()
-    args = parser.parse_args()
-    worker = threading.Thread(
-            target=file_observer_body,
-            args=(args.filename, args.interval, args.filters, com_queue, stop))
-    worker.start()
-
-    # Create the gui, and enter the mainloop
-    gui = Gui(com_queue)
-    gui.mainloop()
-
-    # graceful exit
-    stop.set()
-    worker.join()
-
-
 
 if __name__ == '__main__':
     _main();

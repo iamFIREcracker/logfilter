@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import datetime
 import re
 import time
 import threading
@@ -9,6 +10,7 @@ import Queue
 from argparse import ArgumentParser
 from collections import namedtuple
 from itertools import ifilter
+from operator import methodcaller
 
 
 
@@ -42,6 +44,9 @@ NULL_LISTENER = lambda *a, **kw: None
 
 """Tag object used by the `Text` widget to hanndle string coloring."""
 Tag = namedtuple('Tag', 'name pattern settings'.split())
+
+"""Shortcut to get the the current time."""
+NOW = lambda: datetime.datetime.now()
 
 
 def debug(func):
@@ -168,7 +173,7 @@ class Gui(Tkinter.Tk):
         @param args positional arguments for the fuction
         @param kwargs named arguments for the function
         """
-        self.after_idle(func, *args, **kwargs)
+        print self.after_idle(func, *args, **kwargs)
 
     def clear_text(self):
         """
@@ -343,8 +348,10 @@ def tail_f(filename):
     """
     Emulate the behaviour of `tail -f`.
 
-    Keep reading from the end of the file, and yeald lines as soon as they are
-    added to the file.
+    Keep reading from the end of the file, and yield lines as soon as they are
+    added to the file.  The function yields an empty string when the EOF is
+    reached:  this let the caller wait a small amount of time before trying to
+    read new data.
 
     @param filename name of the file to observe
     """
@@ -359,21 +366,28 @@ def tail_f(filename):
             f.seek(where)
 
 
-def regexp_filter(*exps):
+def grep_e(*exps):
     """
-    Create a reg exp filter function to be passed to built-in `ifilter` func.
+    Emulate the behaviour of `grep -e PATTERN [-e PATTERN ...]`.
 
-    @param exps list of regular expressions representing filter criteria.
+    Return a function which will try to match an input string against the set
+    of loaded regular expressions.
+
+    @param exps list of regular expressions
     """
     regexps = map(re.compile, exps)
 
     def wrapper(line):
         """
-        Return True if the input string matches one of the outer level criteria.
+        Match input string with the set of preloaded regular expressions.
 
-        @param gen string to be tested with the outer level criteria.
+        If an empty string, that will be interpreted as EOF and then a fake
+        match will be generated (to wake up possibly blocked callers).
+
+        @param line string to check for regular expressions matches.
+        @return True 
         """
-        return line == '' or any(map(lambda r: r.search(line), regexps))
+        return line == '' or any(map(methodcaller('search', line), regexps))
 
     return wrapper
 
@@ -395,16 +409,18 @@ def file_observer_body(filename, interval, filters, lines_queue, stop):
     @param stop `threading.Event` object, used to stop the thread.
     """
     lines = []
-    for line in ifilter(regexp_filter(*filters), tail_f(filename)):
+    print NOW(), 'Start processing file'
+    for line in ifilter(grep_e(*filters), tail_f(filename)):
         if stop.isSet():
             break
 
         if (not line and lines) or (len(lines) == BATCH_LIMIT):
-            lines_queue.put(lines)
+            #lines_queue.put(lines)
             lines = []
 
         if not line:
             # We reched the EOF, hence wait for new content
+            print NOW(), 'Nothing else to read'
             time.sleep(interval)
             continue
 

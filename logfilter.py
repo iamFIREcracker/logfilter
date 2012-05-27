@@ -441,6 +441,7 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
 
         if (not line and line_buffer) or (len(line_buffer) == BATCH_LIMIT):
             lines_queue.put(line_buffer)
+            print '+', len(line_buffer), 'qsize', lines_queue.qsize()
             line_buffer = []
 
         if not line:
@@ -460,6 +461,7 @@ def gui_updater_body(gui, lines_queue):
     """
     while True:
         lines = lines_queue.get()
+        #print '-', lines_queue.qsize()
         if lines == STOP_MESSAGE:
             break
 
@@ -526,8 +528,10 @@ def _main():
     empty_filters = num_filters - len(args.filters)
     filters = args.filters + [''] * empty_filters
 
-    filter_queue = Queue.Queue()
-    lines_queue = Queue.Queue()
+    limit = args.limit / BATCH_LIMIT / 32
+    limit = 0
+    filter_queue = Queue.Queue(limit)
+    lines_queue = Queue.Queue(limit)
 
     gui = Gui(None, filters=filters, scroll_limit=args.limit)
     gui.title(TITLE.format(filename=args.filename))

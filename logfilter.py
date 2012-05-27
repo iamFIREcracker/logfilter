@@ -10,9 +10,11 @@ import Queue
 from argparse import ArgumentParser
 from collections import deque
 from collections import namedtuple
+from functools import partial
 from itertools import ifilter
 from itertools import takewhile
 from operator import methodcaller
+from operator import ne
 
 
 
@@ -349,15 +351,6 @@ def filter_thread_spawner_body(filename, lines, interval, filter_queue, lines_qu
         worker.start()
 
 
-def ne(a):
-    """
-    Return a callable object that check for items inequality.
-    """
-    def wrapper(b):
-        return a != b
-    return wrapper
-
-
 def last(lines, iterable):
     """
     Yield last `lines` lines, extracted from `iterable`.
@@ -369,7 +362,7 @@ def last(lines, iterable):
     @param iterable iterable containing lines to be processed.
     """
     # Fill the buffer of lines, untill an EOF is received
-    for line in deque(takewhile(ne(''), iterable), maxlen=lines):
+    for line in deque(takewhile(partial(ne, ''), iterable), maxlen=lines):
         yield line
     yield ''
 

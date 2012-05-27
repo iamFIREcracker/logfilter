@@ -18,7 +18,7 @@ from operator import methodcaller
 TITLE = 'logfilter: {filename}'
 
 """Number of lines to collect before telling the gui to refresh."""
-BATCH_LIMIT = 50
+BATCH_LIMIT = 10
 
 """Number of string filters."""
 NUM_FILTERS = 1
@@ -54,9 +54,9 @@ def debug(func):
     Decorator which prints a message before and after a function execution.
     """
     def wrapper(*args, **kwargs):
-        print '{0}: entering'.format(func.func_name)
+        print '{now}: {fname}: entering'.format(now=NOW(), fname=func.func_name)
         func(*args, **kwargs)
-        print '{0}: exiting...'.format(func.func_name)
+        print '{now}: {fname}: exiting...'.format(now=NOW(), fname=func.func_name)
     return wrapper
 
 
@@ -165,6 +165,7 @@ class Gui(Tkinter.Tk):
         elif event == 'new_filter':
             self.on_new_filter_listener = (func, args, kwargs)
 
+    @debug
     def schedule(self, func, *args, **kwargs):
         """
         Ask the event loop to schedule given function with arguments
@@ -173,7 +174,7 @@ class Gui(Tkinter.Tk):
         @param args positional arguments for the fuction
         @param kwargs named arguments for the function
         """
-        print self.after_idle(func, *args, **kwargs)
+        self.after_idle(func, *args, **kwargs)
 
     def clear_text(self):
         """
@@ -182,6 +183,7 @@ class Gui(Tkinter.Tk):
         self.text.clear()
         self._lines = 0
 
+    @debug
     def append_text(self, lines):
         """
         Append input lines into the text area and scroll to the bottom.
@@ -329,7 +331,7 @@ def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
     worker = None
     while True:
         filters = filter_queue.get()
-        print 'Received filters: {0}'.format(filters)
+        #print 'Received filters: {0}'.format(filters)
         if worker is not None:
             stop.set()
             worker.join()
@@ -359,7 +361,7 @@ def tail_f(filename):
         while True:
             for line in f:
                 yield line
-            yield ""
+            yield ''
 
             # Kind of rewind
             where = f.tell()

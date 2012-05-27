@@ -435,7 +435,6 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
     @param stop `threading.Event` object, used to stop the thread.
     """
     line_buffer = []
-    print NOW(), 'Start processing file'
     for line in ifilter(grep_e(*filters), last(lines, tail_f(filename))):
         if stop.isSet():
             break
@@ -446,7 +445,6 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
 
         if not line:
             # We reched the EOF, hence wait for new content
-            print NOW(), 'Nothing else to read'
             time.sleep(interval)
             continue
 

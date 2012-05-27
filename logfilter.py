@@ -8,8 +8,10 @@ import threading
 import Tkinter
 import Queue
 from argparse import ArgumentParser
+from collections import deque
 from collections import namedtuple
 from itertools import ifilter
+from itertools import takewhile
 from operator import methodcaller
 
 
@@ -318,11 +320,12 @@ class Text(Tkinter.Frame):
 
 
 @debug
-def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
+def filter_thread_spawner_body(filename, lines, interval, filter_queue, lines_queue):
     """
     Spawn a file filter thread as soon as a filter is read from the queue.
 
     @param filename name of the file to pass to the working thread
+    @param lines line used to skip stale lines
     @param interval polling interval
     @param filter_queue message queue containing the filter to apply
     @param lines_queue message queue containing the lines to pass to the gui
@@ -342,8 +345,37 @@ def filter_thread_spawner_body(filename, interval, filter_queue, lines_queue):
         stop = threading.Event()
         worker = threading.Thread(
             target=file_observer_body,
-            args=(filename, interval, filters, lines_queue, stop))
+            args=(filename, lines, interval, filters, lines_queue, stop))
         worker.start()
+
+
+def ne(a):
+    """
+    Return a callable object that check for items inequality.
+    """
+    def wrapper(b):
+        return a != b
+    return wrapper
+
+
+def last(lines, iterable):
+    """
+    Yield last `lines` lines, extracted from `iterable`.
+
+    Flush the buffer of lines if an empty string is received (EOF).  When this
+    happens, the function will return all the new lines generated.
+
+    @param lines number of lines to buffer
+    @param iterable iterable containing lines to be processed.
+    """
+    # Fill the buffer of lines, untill an EOF is received
+    for line in deque(takewhile(ne(''), iterable), maxlen=lines):
+        yield line
+    yield ''
+
+    # Now return each item produced by the iterable
+    for line in iterable:
+        yield line
 
 
 def tail_f(filename):
@@ -395,30 +427,31 @@ def grep_e(*exps):
 
 
 @debug
-def file_observer_body(filename, interval, filters, lines_queue, stop):
+def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
     """
     Body function of thread waiting for file content changes.
 
     The thread will poll `filename` every `iterval` seconds looking for new
     lines;  as soon as new lines are read from the file, these are filtered
-    depeding on `filters`, and the one matching given criteria are put into the
+    depeding on `filters`, and the ones matching given criteria are put into the
     synchronized `lines_queue`.
 
     @param filename filename to poll
+    @param lines limit the number of lines produced by calling `tail_f`
     @param interval polling interval
     @param filters iterable of regexp filters to apply to the file content
     @param lines_queue synchronized queue containing lines matching criteria
     @param stop `threading.Event` object, used to stop the thread.
     """
-    lines = []
+    line_buffer = []
     print NOW(), 'Start processing file'
-    for line in ifilter(grep_e(*filters), tail_f(filename)):
+    for line in ifilter(grep_e(*filters), last(lines, tail_f(filename))):
         if stop.isSet():
             break
 
-        if (not line and lines) or (len(lines) == BATCH_LIMIT):
-            lines_queue.put(lines)
-            lines = []
+        if (not line and line_buffer) or (len(line_buffer) == BATCH_LIMIT):
+            lines_queue.put(line_buffer)
+            line_buffer = []
 
         if not line:
             # We reched the EOF, hence wait for new content
@@ -426,7 +459,7 @@ def file_observer_body(filename, interval, filters, lines_queue, stop):
             time.sleep(interval)
             continue
 
-        lines.append(line)
+        line_buffer.append(line)
 
 
 @debug
@@ -517,7 +550,8 @@ def _main():
 
     filter_thread_spawner = threading.Thread(
             target=filter_thread_spawner_body,
-            args=(args.filename, args.interval, filter_queue, lines_queue))
+            args=(args.filename, args.limit, args.interval, filter_queue,
+                lines_queue))
     filter_thread_spawner.start()
 
     gui_updater = threading.Thread(

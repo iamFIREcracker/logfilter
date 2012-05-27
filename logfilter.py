@@ -22,7 +22,7 @@ from operator import ne
 TITLE = 'logfilter: {filename}'
 
 """Number of lines to collect before telling the gui to refresh."""
-BATCH_LIMIT = 10
+BATCH_LIMIT = 100
 
 """Number of string filters."""
 NUM_FILTERS = 1
@@ -169,7 +169,6 @@ class Gui(Tkinter.Tk):
         elif event == 'new_filter':
             self.on_new_filter_listener = (func, args, kwargs)
 
-    @debug
     def schedule(self, func, *args, **kwargs):
         """
         Ask the event loop to schedule given function with arguments
@@ -187,7 +186,6 @@ class Gui(Tkinter.Tk):
         self.text.clear()
         self._lines = 0
 
-    @debug
     def append_text(self, lines):
         """
         Append input lines into the text area and scroll to the bottom.
@@ -455,7 +453,6 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
         line_buffer.append(line)
 
 
-@debug
 def gui_updater_body(gui, lines_queue):
     """
     Body function of the thread in charge of update the gui text area.

@@ -22,6 +22,9 @@ from operator import ne
 """Application title template"""
 TITLE = 'logfilter: {filename}'
 
+"""Default sleep interval"""
+SLEEP_INTERVAL = 1.0
+
 """Number of lines to collect before telling the gui to refresh."""
 BATCH_LIMIT = 100
 
@@ -134,6 +137,7 @@ class Gui(Tkinter.Tk):
     @debug
     def on_press_enter(self):
         filename = self.file_chooser.get_filename()
+        self.title(TITLE.format(filename=filename))
         filter_strings = map(lambda s: s.get(), self.filter_strings)
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
@@ -365,7 +369,6 @@ class Text(Tkinter.Frame):
         # Scroll to the bottom
         self.text.yview(Tkinter.MOVETO, 1.0)
 
-
     def _highlight_pattern(self, start, end, pattern, tag_name):
         """
         Highlight the input pattern with the settings associated with the tag.
@@ -573,9 +576,9 @@ def _build_parser():
             'filename', default='', nargs='?', help='Filename to filter.',
             metavar='FILENAME')
     parser.add_argument(
-            '-i', '--interval', dest='interval', required=True, type=float,
-            help='Timeout interval to wait before checking for updates',
-            metavar='INTERVAL')
+            '-s', '--sleep-interval', dest='interval', default=SLEEP_INTERVAL,
+            type=float, help='Sleep SLEEP_INTERVAL seconds between iterations',
+            metavar='SLEEP_INTERVAL')
     parser.add_argument(
             '-n', '--num-filters', dest='num_filters', default=NUM_FILTERS,
             type=int, help='Number of filters to apply to log file',
@@ -604,7 +607,6 @@ def _main():
     lines_queue = Queue.Queue(limit)
 
     gui = Gui(None, filename=args.filename, filters=filters, scroll_limit=args.limit)
-    gui.title(TITLE.format(filename=args.filename))
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
     if args.filename and args.filters:

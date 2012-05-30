@@ -580,7 +580,7 @@ def _build_parser():
             type=float, help='Sleep SLEEP_INTERVAL seconds between iterations',
             metavar='SLEEP_INTERVAL')
     parser.add_argument(
-            '-n', '--num-filters', dest='num_filters', default=NUM_FILTERS,
+            '-f', '--num-filters', dest='num_filters', default=NUM_FILTERS,
             type=int, help='Number of filters to apply to log file',
             metavar='NUM_FILTERS')
     parser.add_argument(

@@ -229,9 +229,11 @@ class FileChooser(Tkinter.Frame):
         (func, args, kwargs) = self.on_press_enter_listener
         func(*args, **kwargs)
 
+    @debug
     def on_press_enter_event(self, event):
         self.on_press_enter()
 
+    @debug
     def on_button_click(self):
         """
         Open a filechooser dialog and set the internal filename.
@@ -582,7 +584,8 @@ def _build_parser():
             '-l', '--limit', dest='limit', default=LINES_LIMIT, type=int,
             help='Number of lines to display in the text area', metavar='LIMIT')
     parser.add_argument(
-            'filters', nargs='*', help='Filter presets', metavar='FILTERS')
+            '-e', '--regexp', dest='filters', action='append',
+            help='Filter presets', metavar='FILTERS')
 
     return parser
 

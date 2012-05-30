@@ -113,11 +113,7 @@ class Gui(Tkinter.Tk):
         for (i, entry) in enumerate(entries):
             entry.focus_force()
             entry.grid(row=0, column=i, sticky='EW')
-            entry.bind("<Return>", self.on_press_enter)
-
-        button = Tkinter.Button(
-                container1, text="Filter", command=self.on_button_click)
-        button.grid(row=0, column=len(entries), sticky='EW')
+            entry.bind("<Return>", self.on_press_enter_event)
 
         # Container2
         self.text = Text(self, bg='#222', fg='#eee', wrap=Tkinter.NONE)
@@ -135,7 +131,7 @@ class Gui(Tkinter.Tk):
         self.on_close()
 
     @debug
-    def on_button_click(self):
+    def on_press_enter(self):
         filename = self.file_chooser.get_filename()
         filter_strings = map(lambda s: s.get(), self.filter_strings)
         self.text.configure_tags(
@@ -146,8 +142,8 @@ class Gui(Tkinter.Tk):
         func(*args, **kwargs)
 
     @debug
-    def on_press_enter(self, event):
-        self.on_button_click()
+    def on_press_enter_event(self, event):
+        self.on_press_enter()
 
     def raise_(self):
         """
@@ -580,7 +576,7 @@ def _main():
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
     if args.filename and args.filters:
-        gui.on_button_click()
+        gui.on_press_enter()
 
     filter_thread_spawner = threading.Thread(
             target=filter_thread_spawner_body,

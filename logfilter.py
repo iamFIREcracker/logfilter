@@ -90,17 +90,6 @@ class Gui(Tkinter.Tk):
         """
         Initialize the layout of the GUI
         """
-        container1 = Tkinter.Frame(self)
-        self.filter_strings = [StringVar(f) for f in filters]
-        entries = [Tkinter.Entry(container1, textvariable=filter_string)
-                    for filter_string in self.filter_strings]
-        button = Tkinter.Button(
-                container1, text="Filter", command=self.on_button_click)
-
-        container2 = Tkinter.Frame(self)
-        self.text = Text(container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
-        self.text.configure_scroll_limit(scroll_limit)
-
         self.grid()
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -108,19 +97,32 @@ class Gui(Tkinter.Tk):
         self.bind('<Escape>', self.on_quit)
 
         # Container1
+        container1 = Tkinter.Frame(self)
         container1.grid(row=0, column=0, sticky='EW')
-        for i in xrange(len(entries)):
+        for i in xrange(len(filters)):
             container1.grid_columnconfigure(i, weight=1)
+
+        self.filter_strings = [StringVar(f) for f in filters]
+        entries = [Tkinter.Entry(container1, textvariable=filter_string)
+                    for filter_string in self.filter_strings]
         for (i, entry) in enumerate(entries):
             entry.focus_force()
             entry.grid(row=0, column=i, sticky='EW')
             entry.bind("<Return>", self.on_press_enter)
+
+        button = Tkinter.Button(
+                container1, text="Filter", command=self.on_button_click)
         button.grid(row=0, column=len(entries), sticky='EW')
 
         # Container2
-        container2.grid(row=1, column=0, sticky='EW')
+        container2 = Tkinter.Frame(self)
+        container2.grid(row=1, column=0, sticky='NSEW')
         container2.grid_columnconfigure(0, weight=1)
+        container2.grid_rowconfigure(0, weight=1)
+
+        self.text = Text(container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
         self.text.grid(row=0, column=0, sticky='NSEW')
+        self.text.configure_scroll_limit(scroll_limit)
 
     @debug
     def on_close(self):

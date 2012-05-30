@@ -100,6 +100,7 @@ class Gui(Tkinter.Tk):
         # Container 0
         self.file_chooser = FileChooser(self, filename=filename)
         self.file_chooser.grid(row=0, column=0, sticky='EW')
+        self.file_chooser.register_listener('press_enter', self.on_press_enter)
 
         # Container1
         container1 = Tkinter.Frame(self)
@@ -204,6 +205,8 @@ class FileChooser(Tkinter.Frame):
 
     def __init__(self, parent, **kwargs):
         Tkinter.Frame.__init__(self, parent)
+        self.on_press_enter_listener = (NULL_LISTENER, (), {})
+
         self._initialize(**kwargs)
 
     def _initialize(self, filename):
@@ -214,13 +217,25 @@ class FileChooser(Tkinter.Frame):
 
         self.filename = StringVar(filename)
         entry = Tkinter.Entry(self, textvariable=self.filename)
+        entry.bind("<Return>", self.on_press_enter_event)
         entry.grid(row=0, column=0, sticky='EW')
 
         button = Tkinter.Button(
                 self, text="Select file", command=self.on_button_click)
         button.grid(row=0, column=1)
 
+    @debug
+    def on_press_enter(self):
+        (func, args, kwargs) = self.on_press_enter_listener
+        func(*args, **kwargs)
+
+    def on_press_enter_event(self, event):
+        self.on_press_enter()
+
     def on_button_click(self):
+        """
+        Open a filechooser dialog and set the internal filename.
+        """
         filename = tkFileDialog.askopenfilename(
                 parent=self, title='Choose a file')
         if filename:
@@ -233,6 +248,20 @@ class FileChooser(Tkinter.Frame):
         @return the filename entry content.
         """
         return self.filename.get()
+
+    def register_listener(self, event, func, *args, **kwargs):
+        """
+        Register a listener for the specified named event.
+
+        @param func function to schedule
+        @param args positional arguments for the fuction
+        @param kwargs named arguments for the function
+        """
+        if event not in ['press_enter']:
+            raise ValueError("Invalid event name: " + event)
+
+        if event == 'press_enter':
+            self.on_press_enter_listener = (func, args, kwargs)
 
 
 class Text(Tkinter.Frame):

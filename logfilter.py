@@ -5,6 +5,7 @@ import datetime
 import re
 import time
 import threading
+import tkFileDialog
 import Tkinter
 import Queue
 from argparse import ArgumentParser
@@ -86,19 +87,23 @@ class Gui(Tkinter.Tk):
 
         self._initialize(**kwargs)
 
-    def _initialize(self, filters, scroll_limit):
+    def _initialize(self, filename, filters, scroll_limit):
         """
         Initialize the layout of the GUI
         """
         self.grid()
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
         self.bind('<Escape>', self.on_quit)
 
+        # Container 0
+        self.file_chooser = FileChooser(self, filename=filename)
+        self.file_chooser.grid(row=0, column=0, sticky='EW')
+
         # Container1
         container1 = Tkinter.Frame(self)
-        container1.grid(row=0, column=0, sticky='EW')
+        container1.grid(row=1, column=0, sticky='EW')
         for i in xrange(len(filters)):
             container1.grid_columnconfigure(i, weight=1)
 
@@ -115,13 +120,8 @@ class Gui(Tkinter.Tk):
         button.grid(row=0, column=len(entries), sticky='EW')
 
         # Container2
-        container2 = Tkinter.Frame(self)
-        container2.grid(row=1, column=0, sticky='NSEW')
-        container2.grid_columnconfigure(0, weight=1)
-        container2.grid_rowconfigure(0, weight=1)
-
-        self.text = Text(container2, bg='#222', fg='#eee', wrap=Tkinter.NONE)
-        self.text.grid(row=0, column=0, sticky='NSEW')
+        self.text = Text(self, bg='#222', fg='#eee', wrap=Tkinter.NONE)
+        self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
 
     @debug
@@ -136,12 +136,13 @@ class Gui(Tkinter.Tk):
 
     @debug
     def on_button_click(self):
+        filename = self.file_chooser.get_filename()
         filter_strings = map(lambda s: s.get(), self.filter_strings)
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
                     for ((n, c), f) in zip(TAG_PALETTE, filter_strings))
         (func, args, kwargs) = self.on_new_filter_listener
-        args = [filter_strings] + list(args)
+        args = [filename, filter_strings] + list(args)
         func(*args, **kwargs)
 
     @debug
@@ -198,6 +199,44 @@ class Gui(Tkinter.Tk):
         """
         self.text.append(lines)
         self.raise_()
+
+
+class FileChooser(Tkinter.Frame):
+    """
+    Widget used to select a file from the file-system.
+    """
+
+    def __init__(self, parent, **kwargs):
+        Tkinter.Frame.__init__(self, parent)
+        self._initialize(**kwargs)
+
+    def _initialize(self, filename):
+        """
+        Initialize the file chooser widget.
+        """
+        self.grid_columnconfigure(0, weight=1)
+
+        self.filename = StringVar(filename)
+        entry = Tkinter.Entry(self, textvariable=self.filename)
+        entry.grid(row=0, column=0, sticky='EW')
+
+        button = Tkinter.Button(
+                self, text="Select file", command=self.on_button_click)
+        button.grid(row=0, column=1)
+
+    def on_button_click(self):
+        filename = tkFileDialog.askopenfilename(
+                parent=self, title='Choose a file')
+        if filename:
+            self.filename.set(filename)
+
+    def get_filename(self):
+        """
+        Return the content of the filename entry.
+
+        @return the filename entry content.
+        """
+        return self.filename.get()
 
 
 class Text(Tkinter.Frame):
@@ -322,11 +361,10 @@ class Text(Tkinter.Frame):
 
 
 @debug
-def filter_thread_spawner_body(filename, lines, interval, filter_queue, lines_queue):
+def filter_thread_spawner_body(lines, interval, filter_queue, lines_queue):
     """
     Spawn a file filter thread as soon as a filter is read from the queue.
 
-    @param filename name of the file to pass to the working thread
     @param lines line used to skip stale lines
     @param interval polling interval
     @param filter_queue message queue containing the filter to apply
@@ -335,15 +373,16 @@ def filter_thread_spawner_body(filename, lines, interval, filter_queue, lines_qu
     stop = None
     worker = None
     while True:
-        filters = filter_queue.get()
+        item = filter_queue.get()
         #print 'Received filters: {0}'.format(filters)
         if worker is not None:
             stop.set()
             worker.join()
 
-        if filters == STOP_MESSAGE:
+        if item == STOP_MESSAGE:
             break
 
+        (filename, filters) = item
         stop = threading.Event()
         worker = threading.Thread(
             target=file_observer_body,
@@ -480,19 +519,20 @@ def quit(filter_queue, lines_queue):
 
 
 @debug
-def apply_filters(filters, gui, filter_queue):
+def apply_filters(filename, filters, gui, filter_queue):
     """
     Invoked by the GUI when a new filter is entered.
 
     Clear the gui and queue the received filter into the shared synchronized
     queue.
 
+    @param filename the name of the file to analyze
     @param gui `Gui` object to update.
     @param filters collection of string filters
     @param filter_queue message queue shared with working thread.
     """
     gui.clear_text()
-    filter_queue.put(filter(None, filters))
+    filter_queue.put((filename, filter(None, filters)))
 
 
 def _build_parser():
@@ -503,7 +543,7 @@ def _build_parser():
             description='Filter the content of a file, dynamically')
 
     parser.add_argument(
-            '-f', '--filename', dest='filename', required=True,
+            '-f', '--filename', dest='filename', default='',
             help='Filename to filter.', metavar='FILENAME')
     parser.add_argument(
             '-i', '--interval', dest='interval', required=True, type=float,
@@ -535,16 +575,16 @@ def _main():
     filter_queue = Queue.Queue(limit)
     lines_queue = Queue.Queue(limit)
 
-    gui = Gui(None, filters=filters, scroll_limit=args.limit)
+    gui = Gui(None, filename=args.filename, filters=filters, scroll_limit=args.limit)
     gui.title(TITLE.format(filename=args.filename))
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
-    if args.filters:
+    if args.filename and args.filters:
         gui.on_button_click()
 
     filter_thread_spawner = threading.Thread(
             target=filter_thread_spawner_body,
-            args=(args.filename, args.limit, args.interval, filter_queue,
+            args=(args.limit, args.interval, filter_queue,
                 lines_queue))
     filter_thread_spawner.start()
 

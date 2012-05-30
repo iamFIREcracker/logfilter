@@ -570,8 +570,8 @@ def _build_parser():
             description='Filter the content of a file, dynamically')
 
     parser.add_argument(
-            '-f', '--filename', dest='filename', default='',
-            help='Filename to filter.', metavar='FILENAME')
+            'filename', default='', nargs='?', help='Filename to filter.',
+            metavar='FILENAME')
     parser.add_argument(
             '-i', '--interval', dest='interval', required=True, type=float,
             help='Timeout interval to wait before checking for updates',

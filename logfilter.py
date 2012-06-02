@@ -633,9 +633,10 @@ def _main():
     parser = _build_parser()
     args = parser.parse_args()
     # create the array of filters
-    num_filters = max(len(args.filters), args.num_filters)
-    empty_filters = num_filters - len(args.filters)
-    filters = args.filters + [''] * empty_filters
+    filters = args.filters if args.filters else []
+    num_filters = max(len(filters), args.num_filters)
+    empty_filters = num_filters - len(filters)
+    filters += [''] * empty_filters
 
     limit = args.limit / _BATCH_LIMIT / 32
     limit = 0

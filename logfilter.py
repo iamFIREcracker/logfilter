@@ -83,12 +83,15 @@ class Gui(Tkinter.Tk):
 
     def __init__(self, parent, **kwargs):
         Tkinter.Tk.__init__(self, parent) #super(Tkinter.Tk, self).__init__(parent)
-        self.parent = parent
+
+        self._schedule_queue = Queue.Queue()
 
         self.on_quit_listener = (NULL_LISTENER, (), {})
         self.on_new_filter_listener = (NULL_LISTENER, (), {})
 
         self._initialize(**kwargs)
+
+        self._update()
 
     def _initialize(self, filename, filters, scroll_limit):
         """
@@ -123,6 +126,19 @@ class Gui(Tkinter.Tk):
         self.text = Text(self, bg='#222', fg='#eee', wrap=Tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
+
+    def _update(self):
+        """
+        Poll the schedule queue for new actions.
+        """
+        for i in xrange(10):
+            try:
+                (func, args, kwargs) =  self._schedule_queue.get(False)
+            except Queue.Empty:
+                break
+
+            self.after_idle(func, *args, **kwargs)
+        self.after(66, self._update)
 
     @debug
     def on_close(self):
@@ -181,7 +197,7 @@ class Gui(Tkinter.Tk):
         @param args positional arguments for the fuction
         @param kwargs named arguments for the function
         """
-        self.after_idle(func, *args, **kwargs)
+        self._schedule_queue.put((func, args, kwargs))
 
     def clear_text(self):
         """
@@ -561,7 +577,7 @@ def apply_filters(filename, filters, gui, filter_queue):
     @param filters collection of string filters
     @param filter_queue message queue shared with working thread.
     """
-    gui.clear_text()
+    gui.schedule(gui.clear_text)
     filter_queue.put((filename, filter(None, filters)))
 
 

@@ -88,7 +88,7 @@ Tag = namedtuple('Tag', 'name pattern settings'.split())
 class Gui(Tkinter.Tk):
 
     def __init__(self, parent, **kwargs):
-        Tkinter.Tk.__init__(self, parent) #super(Tkinter.Tk, self).__init__(parent)
+        Tkinter.Tk.__init__(self, parent)
 
         self._schedule_queue = Queue.Queue()
 
@@ -140,7 +140,7 @@ class Gui(Tkinter.Tk):
         for i in xrange(10):
             try:
                 (func, args, kwargs) =  self._schedule_queue.get(False)
-                print '- schedule_queue', self._schedule_queue.qsize()
+                #print '- schedule_queue', self._schedule_queue.qsize()
             except Queue.Empty:
                 break
 
@@ -440,7 +440,6 @@ def filter_thread_spawner_body(lines, interval, filter_queue, lines_queue):
     worker = None
     while True:
         item = filter_queue.get()
-        #print 'Received filters: {0}'.format(filters)
         if worker is not None:
             stop.set()
             worker.join()
@@ -548,7 +547,7 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
 
         if (not line and line_buffer) or (len(line_buffer) == _BATCH_LIMIT):
             lines_queue.put(line_buffer)
-            print '+', len(line_buffer), 'qsize', lines_queue.qsize()
+            #print '+', len(line_buffer), 'qsize', lines_queue.qsize()
             line_buffer = []
 
         if not line:
@@ -632,18 +631,20 @@ def _build_parser():
 def _main():
     parser = _build_parser()
     args = parser.parse_args()
+
     # create the array of filters
     filters = args.filters if args.filters else []
     num_filters = max(len(filters), args.num_filters)
     empty_filters = num_filters - len(filters)
     filters += [''] * empty_filters
 
-    limit = args.limit / _BATCH_LIMIT / 32
-    limit = 0
-    filter_queue = Queue.Queue(limit)
-    lines_queue = Queue.Queue(limit)
+    # create communication queues, shared between threads
+    filter_queue = Queue.Queue()
+    lines_queue = Queue.Queue()
 
-    gui = Gui(None, filename=args.filename, filters=filters, scroll_limit=args.limit)
+    gui = Gui(
+            None, filename=args.filename, filters=filters,
+            scroll_limit=args.limit)
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)
     if args.filename and args.filters:
@@ -656,8 +657,7 @@ def _main():
     filter_thread_spawner.start()
 
     gui_updater = threading.Thread(
-            target=gui_updater_body,
-            args=(gui, lines_queue))
+            target=gui_updater_body, args=(gui, lines_queue))
     gui_updater.start()
 
     gui.mainloop()

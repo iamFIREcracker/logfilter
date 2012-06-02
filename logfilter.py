@@ -140,7 +140,7 @@ class Gui(Tkinter.Tk):
         for i in xrange(10):
             try:
                 (func, args, kwargs) =  self._schedule_queue.get(False)
-                #print 'schedule_queue', self._schedule_queue.qsize()
+                print '- schedule_queue', self._schedule_queue.qsize()
             except Queue.Empty:
                 break
 

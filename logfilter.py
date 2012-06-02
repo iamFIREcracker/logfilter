@@ -19,23 +19,20 @@ from operator import ne
 
 
 
-"""Application title template"""
-TITLE = 'logfilter: {filename}'
-
-"""Default sleep interval"""
-SLEEP_INTERVAL = 1.0
-
 """Number of lines to collect before telling the gui to refresh."""
-BATCH_LIMIT = 100
+_BATCH_LIMIT = 100
 
-"""Number of string filters."""
-NUM_FILTERS = 1
+"""Default event listener."""
+_NULL_LISTENER = lambda *a, **kw: None
 
-"""Number of lines to display on screen."""
-LINES_LIMIT = 8000
+"""Gui polling job interval"""
+_POLL_INTERVAL = 66
+
+"""Stop message used to stop threads."""
+_STOP_MESSAGE = None
 
 """Tag color palette."""
-TAG_PALETTE = (
+_TAG_PALETTE = (
         ('red', '#E52222'),
         ('green', '#A6E32D'),
         ('yellow', '#FD951E'),
@@ -44,23 +41,27 @@ TAG_PALETTE = (
         ('cyan', '#67D9F0')
     )
 
-"""Stop message used to stop threads."""
-STOP_MESSAGE = None
+"""Application title template"""
+_TITLE = 'logfilter: {filename}'
 
-"""Default event listener."""
-NULL_LISTENER = lambda *a, **kw: None
 
-"""Tag object used by the `Text` widget to hanndle string coloring."""
-Tag = namedtuple('Tag', 'name pattern settings'.split())
+"""Number of string filters."""
+NUM_FILTERS = 1
 
-"""Shortcut to get the the current time."""
-NOW = lambda: datetime.datetime.now()
+"""Number of lines to display on screen."""
+LINES_LIMIT = 8000
+
+"""Default sleep interval"""
+SLEEP_INTERVAL = 1.0
+
 
 
 def debug(func):
     """
     Decorator which prints a message before and after a function execution.
     """
+    NOW = lambda: datetime.datetime.now()
+
     def wrapper(*args, **kwargs):
         print '{now}: {fname}: entering'.format(now=NOW(), fname=func.func_name)
         func(*args, **kwargs)
@@ -79,6 +80,11 @@ def StringVar(default):
     return s
 
 
+
+"""Tag object used by the `Text` widget to hanndle string coloring."""
+Tag = namedtuple('Tag', 'name pattern settings'.split())
+
+
 class Gui(Tkinter.Tk):
 
     def __init__(self, parent, **kwargs):
@@ -86,8 +92,8 @@ class Gui(Tkinter.Tk):
 
         self._schedule_queue = Queue.Queue()
 
-        self.on_quit_listener = (NULL_LISTENER, (), {})
-        self.on_new_filter_listener = (NULL_LISTENER, (), {})
+        self.on_quit_listener = (_NULL_LISTENER, (), {})
+        self.on_new_filter_listener = (_NULL_LISTENER, (), {})
 
         self._initialize(**kwargs)
 
@@ -134,11 +140,12 @@ class Gui(Tkinter.Tk):
         for i in xrange(10):
             try:
                 (func, args, kwargs) =  self._schedule_queue.get(False)
+                #print 'schedule_queue', self._schedule_queue.qsize()
             except Queue.Empty:
                 break
 
             self.after_idle(func, *args, **kwargs)
-        self.after(66, self._update)
+        self.after(_POLL_INTERVAL, self._update)
 
     @debug
     def on_close(self):
@@ -153,11 +160,11 @@ class Gui(Tkinter.Tk):
     @debug
     def on_press_enter(self):
         filename = self.file_chooser.get_filename()
-        self.title(TITLE.format(filename=filename))
+        self.title(_TITLE.format(filename=filename))
         filter_strings = map(lambda s: s.get(), self.filter_strings)
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
-                    for ((n, c), f) in zip(TAG_PALETTE, filter_strings))
+                    for ((n, c), f) in zip(_TAG_PALETTE, filter_strings))
         (func, args, kwargs) = self.on_new_filter_listener
         args = [filename, filter_strings] + list(args)
         func(*args, **kwargs)
@@ -225,7 +232,7 @@ class FileChooser(Tkinter.Frame):
 
     def __init__(self, parent, **kwargs):
         Tkinter.Frame.__init__(self, parent)
-        self.on_press_enter_listener = (NULL_LISTENER, (), {})
+        self.on_press_enter_listener = (_NULL_LISTENER, (), {})
 
         self._initialize(**kwargs)
 
@@ -425,7 +432,7 @@ def filter_thread_spawner_body(lines, interval, filter_queue, lines_queue):
             stop.set()
             worker.join()
 
-        if item == STOP_MESSAGE:
+        if item == _STOP_MESSAGE:
             break
 
         (filename, filters) = item
@@ -526,7 +533,7 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
         if stop.isSet():
             break
 
-        if (not line and line_buffer) or (len(line_buffer) == BATCH_LIMIT):
+        if (not line and line_buffer) or (len(line_buffer) == _BATCH_LIMIT):
             lines_queue.put(line_buffer)
             print '+', len(line_buffer), 'qsize', lines_queue.qsize()
             line_buffer = []
@@ -549,7 +556,7 @@ def gui_updater_body(gui, lines_queue):
     while True:
         lines = lines_queue.get()
         #print '-', lines_queue.qsize()
-        if lines == STOP_MESSAGE:
+        if lines == _STOP_MESSAGE:
             break
 
         gui.schedule(gui.append_text, lines)
@@ -560,8 +567,8 @@ def quit(filter_queue, lines_queue):
     """
     Invoked by the GUI when the main window has been closed.
     """
-    filter_queue.put(STOP_MESSAGE)
-    lines_queue.put(STOP_MESSAGE)
+    filter_queue.put(_STOP_MESSAGE)
+    lines_queue.put(_STOP_MESSAGE)
 
 
 @debug
@@ -617,7 +624,7 @@ def _main():
     empty_filters = num_filters - len(args.filters)
     filters = args.filters + [''] * empty_filters
 
-    limit = args.limit / BATCH_LIMIT / 32
+    limit = args.limit / _BATCH_LIMIT / 32
     limit = 0
     filter_queue = Queue.Queue(limit)
     lines_queue = Queue.Queue(limit)

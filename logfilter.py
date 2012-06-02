@@ -176,6 +176,9 @@ class Gui(Tkinter.Tk):
     def raise_(self):
         """
         Raise the window on the top of windows stack.
+
+        The method is supposed to be invoked by the gui thread, hence it should
+        be used in pair with `schedule`.
         """
         self.attributes('-topmost', True)
         self.attributes('-topmost', False)
@@ -209,9 +212,14 @@ class Gui(Tkinter.Tk):
     def clear_text(self):
         """
         Delete all the text contained in the text area.
+
+        The method schedule the action to the giu thread, hence it is to be
+        considered thread-safe.
         """
-        self.text.clear()
-        self._lines = 0
+        def wrapped():
+            self.text.clear()
+            self._lines = 0
+        self.schedule(wrapped)
 
     def append_text(self, lines):
         """
@@ -219,10 +227,15 @@ class Gui(Tkinter.Tk):
 
         Additionally, raise the window on top of windows stack.
 
+        The method schedule the action to the giu thread, hence it is to be
+        considered thread-safe.
+
         @param lines iterable containing the lines to be added.
         """
-        self.text.append(lines)
-        self.raise_()
+        def wrapped():
+            self.text.append(lines)
+            self.raise_()
+        self.schedule(wrapped)
 
 
 class FileChooser(Tkinter.Frame):
@@ -559,7 +572,7 @@ def gui_updater_body(gui, lines_queue):
         if lines == _STOP_MESSAGE:
             break
 
-        gui.schedule(gui.append_text, lines)
+        gui.append_text(lines)
 
 
 @debug
@@ -584,7 +597,7 @@ def apply_filters(filename, filters, gui, filter_queue):
     @param filters collection of string filters
     @param filter_queue message queue shared with working thread.
     """
-    gui.schedule(gui.clear_text)
+    gui.clear_text()
     filter_queue.put((filename, filter(None, filters)))
 
 

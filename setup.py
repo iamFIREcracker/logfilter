@@ -37,6 +37,9 @@ params = dict(
     name=NAME,
     version=VERSION,
     py_modules=MODULES,
+    entry_points={
+        'console_scripts': ['logfilter = logfilter:_main'],
+    },
     install_requires=INSTALL_REQUIRES,
 
     # metadata for upload to PyPI

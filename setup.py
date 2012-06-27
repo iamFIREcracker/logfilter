@@ -4,9 +4,9 @@ import os
 from setuptools import setup
 
 
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 NAME = 'logfilter'
-MODULES = [NAME]
+PACKAGES = [NAME]
 DESCRIPTION = 'Poll log files for updates and highlight words based on regexp filters'
 readme = os.path.join(os.path.dirname(__file__), 'README.rst')
 LONG_DESCRIPTION = open(readme).read()
@@ -36,9 +36,9 @@ KEYWORDS = "log filter grep tail".split(' ')
 params = dict(
     name=NAME,
     version=VERSION,
-    py_modules=MODULES,
+    packages=PACKAGES,
     entry_points={
-        'console_scripts': ['logfilter = logfilter:_main'],
+        'console_scripts': ['logfilter = logfilter.logfilter:_main'],
     },
     install_requires=INSTALL_REQUIRES,
 
@@ -52,7 +52,6 @@ params = dict(
     url=URL,
     download_url=DOWNLOAD_URL,
     classifiers=CLASSIFIERS,
-    provides=MODULES,
     requires=INSTALL_REQUIRES,
 )
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import datetime
 import re
 import time
@@ -63,9 +64,11 @@ def debug(func):
     NOW = lambda: datetime.datetime.now()
 
     def wrapper(*args, **kwargs):
-        print '{now}: {fname}: entering'.format(now=NOW(), fname=func.func_name)
+        print('{now}: {fname}: entering'.format(
+            now=NOW(), fname=func.func_name))
         func(*args, **kwargs)
-        print '{now}: {fname}: exiting...'.format(now=NOW(), fname=func.func_name)
+        print('{now}: {fname}: exiting...'.format(
+            now=NOW(), fname=func.func_name))
     return wrapper
 
 

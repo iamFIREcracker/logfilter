@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import os
+from setuptools import find_packages
 from setuptools import setup
 
 
-VERSION = '0.1.2'
+VERSION = '0.2.1'
 NAME = 'logfilter'
 PACKAGES = [NAME]
 DESCRIPTION = 'Poll log files for updates and highlight words based on regexp filters'
@@ -25,6 +26,7 @@ CLASSIFIERS = [
     'License :: OSI Approved :: BSD License',
     'Operating System :: OS Independent',
     'Programming Language :: Python :: 2.7',
+    'Programming Language :: Python :: 3.2',
     'Topic :: Text Processing :: Filters',
     'Topic :: Utilities',
 ]
@@ -36,7 +38,7 @@ KEYWORDS = "log filter grep tail".split(' ')
 params = dict(
     name=NAME,
     version=VERSION,
-    packages=PACKAGES,
+    packages=find_packages(),
     entry_points={
         'console_scripts': ['logfilter = logfilter.logfilter:_main'],
     },

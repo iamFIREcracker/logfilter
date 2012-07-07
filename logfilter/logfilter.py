@@ -2,22 +2,25 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+
 import datetime
 import re
 import time
 import threading
-import tkFileDialog
-import Tkinter
-import Queue
 from argparse import ArgumentParser
 from collections import deque
 from collections import namedtuple
 from functools import partial
-from itertools import ifilter
 from itertools import takewhile
 from operator import methodcaller
 from operator import ne
 
+from _compact import filedialog
+from _compact import filter
+from _compact import func_get_name
+from _compact import tkinter
+from _compact import queue
+from _compact import range
 
 
 """Number of lines to collect before telling the gui to refresh."""
@@ -65,20 +68,20 @@ def debug(func):
 
     def wrapper(*args, **kwargs):
         print('{now}: {fname}: entering'.format(
-            now=NOW(), fname=func.func_name))
+            now=NOW(), fname=func_get_name(func)))
         func(*args, **kwargs)
         print('{now}: {fname}: exiting...'.format(
-            now=NOW(), fname=func.func_name))
+            now=NOW(), fname=func_get_name(func)))
     return wrapper
 
 
 def StringVar(default):
     """
-    Return a new (initialized) `Tkinter.StringVar.
+    Return a new (initialized) `tkinter.StringVar.
 
     @param default default string value
     """
-    s = Tkinter.StringVar()
+    s = tkinter.StringVar()
     s.set(default)
     return s
 
@@ -88,12 +91,12 @@ def StringVar(default):
 Tag = namedtuple('Tag', 'name pattern settings'.split())
 
 
-class Gui(Tkinter.Tk):
+class Gui(tkinter.Tk):
 
     def __init__(self, parent, **kwargs):
-        Tkinter.Tk.__init__(self, parent)
+        tkinter.Tk.__init__(self, parent)
 
-        self._schedule_queue = Queue.Queue()
+        self._schedule_queue = queue.Queue()
 
         self.on_quit_listener = (_NULL_LISTENER, (), {})
         self.on_new_filter_listener = (_NULL_LISTENER, (), {})
@@ -118,13 +121,13 @@ class Gui(Tkinter.Tk):
         self.file_chooser.register_listener('press_enter', self.on_press_enter)
 
         # Container1
-        container1 = Tkinter.Frame(self)
+        container1 = tkinter.Frame(self)
         container1.grid(row=1, column=0, sticky='EW')
-        for i in xrange(len(filters)):
+        for i in range(len(filters)):
             container1.grid_columnconfigure(i, weight=1)
 
         self.filter_strings = [StringVar(f) for f in filters]
-        entries = [Tkinter.Entry(container1, textvariable=filter_string)
+        entries = [tkinter.Entry(container1, textvariable=filter_string)
                     for filter_string in self.filter_strings]
         for (i, entry) in enumerate(entries):
             entry.focus_force()
@@ -132,7 +135,7 @@ class Gui(Tkinter.Tk):
             entry.bind("<Return>", self.on_press_enter_event)
 
         # Container2
-        self.text = Text(self, bg='#222', fg='#eee', wrap=Tkinter.NONE)
+        self.text = Text(self, bg='#222', fg='#eee', wrap=tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
 
@@ -140,11 +143,11 @@ class Gui(Tkinter.Tk):
         """
         Poll the schedule queue for new actions.
         """
-        for i in xrange(10):
+        for i in range(10):
             try:
                 (func, args, kwargs) =  self._schedule_queue.get(False)
                 #print '- schedule_queue', self._schedule_queue.qsize()
-            except Queue.Empty:
+            except queue.Empty:
                 break
 
             self.after_idle(func, *args, **kwargs)
@@ -164,7 +167,7 @@ class Gui(Tkinter.Tk):
     def on_press_enter(self):
         filename = self.file_chooser.get_filename()
         self.title(_TITLE.format(filename=filename))
-        filter_strings = map(lambda s: s.get(), self.filter_strings)
+        filter_strings = [s.get() for s in self.filter_strings]
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
                     for ((n, c), f) in zip(_TAG_PALETTE, filter_strings))
@@ -241,13 +244,13 @@ class Gui(Tkinter.Tk):
         self.schedule(wrapped)
 
 
-class FileChooser(Tkinter.Frame):
+class FileChooser(tkinter.Frame):
     """
     Widget used to select a file from the file-system.
     """
 
     def __init__(self, parent, **kwargs):
-        Tkinter.Frame.__init__(self, parent)
+        tkinter.Frame.__init__(self, parent)
         self.on_press_enter_listener = (_NULL_LISTENER, (), {})
 
         self._initialize(**kwargs)
@@ -259,11 +262,11 @@ class FileChooser(Tkinter.Frame):
         self.grid_columnconfigure(0, weight=1)
 
         self.filename = StringVar(filename)
-        entry = Tkinter.Entry(self, textvariable=self.filename)
+        entry = tkinter.Entry(self, textvariable=self.filename)
         entry.bind("<Return>", self.on_press_enter_event)
         entry.grid(row=0, column=0, sticky='EW')
 
-        button = Tkinter.Button(
+        button = tkinter.Button(
                 self, text="Select file", command=self.on_button_click)
         button.grid(row=0, column=1)
 
@@ -281,7 +284,7 @@ class FileChooser(Tkinter.Frame):
         """
         Open a filechooser dialog and set the internal filename.
         """
-        filename = tkFileDialog.askopenfilename(
+        filename = filedialog.askopenfilename(
                 parent=self, title='Choose a file')
         if filename:
             self.filename.set(filename)
@@ -309,7 +312,7 @@ class FileChooser(Tkinter.Frame):
             self.on_press_enter_listener = (func, args, kwargs)
 
 
-class Text(Tkinter.Frame):
+class Text(tkinter.Frame):
     """
     Extension of the `Tk.Text` widget which add support to colored strings.
 
@@ -318,7 +321,7 @@ class Text(Tkinter.Frame):
     """
 
     def __init__(self, parent, **kwargs):
-        Tkinter.Frame.__init__(self, parent)
+        tkinter.Frame.__init__(self, parent)
         self._scroll_limit = LINES_LIMIT
         self._num_lines = 0
         self._tags = []
@@ -329,9 +332,9 @@ class Text(Tkinter.Frame):
         """
         Initialize the text widget.
         """
-        text = Tkinter.Text(self, **kwargs)
-        vert_scroll = Tkinter.Scrollbar(self)
-        horiz_scroll = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
+        text = tkinter.Text(self, **kwargs)
+        vert_scroll = tkinter.Scrollbar(self)
+        horiz_scroll = tkinter.Scrollbar(self, orient=tkinter.HORIZONTAL)
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -339,7 +342,7 @@ class Text(Tkinter.Frame):
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)
         text.config(xscrollcommand=horiz_scroll.set)
-        text.config(state=Tkinter.DISABLED)
+        text.config(state=tkinter.DISABLED)
 
         vert_scroll.grid(row=0, column=1, sticky='NS')
         vert_scroll.config(command=text.yview)
@@ -364,15 +367,15 @@ class Text(Tkinter.Frame):
         @param tags collection of `Tag` items
         """
         self._tags = list(tags)
-        map(lambda t: self.text.tag_config(t.name, t.settings), self._tags)
+        [self.text.tag_config(t.name, t.settings) for t in self._tags]
 
     def clear(self):
         """
         Clear the text widget.
         """
-        self.text.config(state=Tkinter.NORMAL)
-        self.text.delete(1.0, Tkinter.END)
-        self.text.config(state=Tkinter.DISABLED)
+        self.text.config(state=tkinter.NORMAL)
+        self.text.delete(1.0, tkinter.END)
+        self.text.config(state=tkinter.DISABLED)
         self._lines = 0
 
     def append(self, lines):
@@ -388,14 +391,14 @@ class Text(Tkinter.Frame):
             """
             self._highlight_pattern(start, end, tag.pattern, tag.name)
 
-        self.text.config(state=Tkinter.NORMAL)
+        self.text.config(state=tkinter.NORMAL)
 
         for line in lines:
-            start = self.text.index('{0} - 1 lines'.format(Tkinter.END))
-            end = self.text.index(Tkinter.END)
+            start = self.text.index('{0} - 1 lines'.format(tkinter.END))
+            end = self.text.index(tkinter.END)
 
-            self.text.insert(Tkinter.END, line)
-            map(highlight_tag, list(self._tags))
+            self.text.insert(tkinter.END, line)
+            [highlight_tag(t) for t in list(self._tags)]
 
             self._lines += 1
             if self._lines > self._scroll_limit:
@@ -403,10 +406,10 @@ class Text(Tkinter.Frame):
                 self.text.delete(1.0, 2.0)
                 self._lines -= 1
 
-        self.text.config(state=Tkinter.DISABLED)
+        self.text.config(state=tkinter.DISABLED)
 
         # Scroll to the bottom
-        self.text.yview(Tkinter.MOVETO, 1.0)
+        self.text.yview(tkinter.MOVETO, 1.0)
 
     def _highlight_pattern(self, start, end, pattern, tag_name):
         """
@@ -420,7 +423,7 @@ class Text(Tkinter.Frame):
         @param pattern string pattern matching the tag
         @param tag_name name of the tag to associate with matching strings
         """
-        count = Tkinter.IntVar()
+        count = tkinter.IntVar()
         index = self.text.search(pattern, start, end, count=count, regexp=True)
         if not index:
             return
@@ -509,7 +512,7 @@ def grep_e(*exps):
 
     @param exps list of regular expressions
     """
-    regexps = map(re.compile, exps)
+    regexps = [re.compile(exp) for exp in exps]
 
     def wrapper(line):
         """
@@ -521,7 +524,7 @@ def grep_e(*exps):
         @param line string to check for regular expressions matches.
         @return True 
         """
-        return line == '' or any(map(methodcaller('search', line), regexps))
+        return line == '' or any([reg.search(line) for reg in regexps])
 
     return wrapper
 
@@ -544,7 +547,7 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
     @param stop `threading.Event` object, used to stop the thread.
     """
     line_buffer = []
-    for line in ifilter(grep_e(*filters), last(lines, tail_f(filename))):
+    for line in filter(grep_e(*filters), last(lines, tail_f(filename))):
         if stop.isSet():
             break
 
@@ -642,8 +645,8 @@ def _main():
     filters += [''] * empty_filters
 
     # create communication queues, shared between threads
-    filter_queue = Queue.Queue()
-    lines_queue = Queue.Queue()
+    filter_queue = queue.Queue()
+    lines_queue = queue.Queue()
 
     gui = Gui(
             None, filename=args.filename, filters=filters,

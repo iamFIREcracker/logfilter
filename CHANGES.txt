@@ -1,0 +1,11 @@
+2012-07-07 (0.2.1dev)
+- Add python 3.2 compatibility
+
+2012-06-27 (0.1.2dev)
+- Better packaging (create a console script to run logfilter)
+
+2012-06-25 (0.1.1)
+- Add MANIFEST.in file (issue #9)
+
+2012-06-02 (0.1.0)
+- First public release

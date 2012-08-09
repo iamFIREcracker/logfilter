@@ -186,8 +186,10 @@ class Gui(tkinter.Tk):
         The method is supposed to be invoked by the gui thread, hence it should
         be used in pair with `schedule`.
         """
-        self.attributes('-topmost', True)
-        self.attributes('-topmost', False)
+        #self.attributes('-topmost', True)
+        #self.attributes('-topmost', False)
+        self.lift()
+        self.focus_force()
 
     def register_listener(self, event, func, *args, **kwargs):
         """

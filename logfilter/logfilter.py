@@ -335,14 +335,18 @@ class Text(tkinter.Frame):
         text = tkinter.Text(self, **kwargs)
         vert_scroll = tkinter.Scrollbar(self)
         horiz_scroll = tkinter.Scrollbar(self, orient=tkinter.HORIZONTAL)
+        popup = tkinter.Menu(self, tearoff=0)
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
+
+        popup.add_command(label="Clear".ljust(20), command=self.clear)
 
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)
         text.config(xscrollcommand=horiz_scroll.set)
         text.config(state=tkinter.DISABLED)
+        text.bind("<Button-3>", self._show_popup)
 
         vert_scroll.grid(row=0, column=1, sticky='NS')
         vert_scroll.config(command=text.yview)
@@ -351,6 +355,10 @@ class Text(tkinter.Frame):
         horiz_scroll.config(command=text.xview)
 
         self.text = text
+        self.popup = popup
+
+    def _show_popup(self, event):
+        self.popup.post(event.x_root, event.y_root)
 
     def configure_scroll_limit(self, scroll_limit):
         """

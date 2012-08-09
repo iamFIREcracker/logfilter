@@ -24,7 +24,7 @@ from _compact import range
 
 
 """Number of lines to collect before telling the gui to refresh."""
-_BATCH_LIMIT = 100
+_BATCH_LIMIT = 200
 
 """Default event listener."""
 _NULL_LISTENER = lambda *a, **kw: None

@@ -136,6 +136,10 @@ class Gui(tkinter.Tk):
             entry.grid(row=0, column=i, sticky='EW')
             entry.bind("<Return>", self.on_press_enter_event)
 
+        button = tkinter.Button(
+                container1, text="Filter", command=self.on_press_enter)
+        button.grid(row=0, column=len(filters), sticky='EW')
+
         # Container2
         self.text = Text(self, bg='#222', fg='#eee', wrap=tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')

@@ -12,7 +12,6 @@ from collections import deque
 from collections import namedtuple
 from functools import partial
 from itertools import takewhile
-from operator import methodcaller
 from operator import ne
 
 from _compact import filedialog
@@ -54,6 +53,9 @@ NUM_FILTERS = 1
 
 """Number of lines to display on screen."""
 LINES_LIMIT = 8000
+
+"""Special scroll limit value to use a kind of infinite scroll buffer."""
+LINES_UNLIMITED = -1
 
 """Default sleep interval"""
 SLEEP_INTERVAL = 1.0
@@ -411,7 +413,8 @@ class Text(tkinter.Frame):
             [highlight_tag(t) for t in list(self._tags)]
 
             self._lines += 1
-            if self._lines > self._scroll_limit:
+            if (self._scroll_limit != LINES_UNLIMITED
+                    and self._lines > self._scroll_limit):
                 # delete from row 1, column 0, to row 2, column 0 (first line)
                 self.text.delete(1.0, 2.0)
                 self._lines -= 1
@@ -478,9 +481,11 @@ def last(lines, iterable):
     Flush the buffer of lines if an empty string is received (EOF).  When this
     happens, the function will return all the new lines generated.
 
-    @param lines number of lines to buffer
+    @param lines number of lines to buffer (if equal to LINES_UNLIMITED, then
+                 all the lines will be buffered)
     @param iterable iterable containing lines to be processed.
     """
+    lines = lines if lines != LINES_UNLIMITED else None
     # Fill the buffer of lines, untill an EOF is received
     for line in deque(takewhile(partial(ne, ''), iterable), maxlen=lines):
         yield line

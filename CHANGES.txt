@@ -1,3 +1,8 @@
+2012-08-10 (0.3.1dev)
+- Add right-click menu with an entry to clear the text widget (issue #10)
+- Better window focus management on new content read from the file (issue #12)
+- Add configuration setting to enable infinite scroll (issue #11)
+
 2012-07-07 (0.2.1dev)
 - Add python 3.2 compatibility
 

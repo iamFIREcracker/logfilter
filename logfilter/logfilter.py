@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 from collections import deque
 from collections import namedtuple
 from functools import partial
+from itertools import cycle
 from itertools import takewhile
 from operator import ne
 
@@ -176,7 +177,7 @@ class Gui(tkinter.Tk):
         filter_strings = [s.get() for s in self.filter_strings]
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
-                    for ((n, c), f) in zip(_TAG_PALETTE, filter_strings))
+                    for ((n, c), f) in zip(cycle(_TAG_PALETTE), filter_strings))
         (func, args, kwargs) = self.on_new_filter_listener
         args = [filename, filter_strings] + list(args)
         func(*args, **kwargs)

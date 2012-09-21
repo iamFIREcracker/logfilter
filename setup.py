@@ -40,7 +40,7 @@ params = dict(
     version=VERSION,
     packages=find_packages(),
     entry_points={
-        'console_scripts': ['logfilter = logfilter.logfilter:_main'],
+        'gui_scripts': ['logfilter = logfilter.logfilter:_main'],
     },
     install_requires=INSTALL_REQUIRES,
 

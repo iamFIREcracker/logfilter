@@ -89,6 +89,17 @@ def StringVar(default):
     return s
 
 
+def BooleanVar(default):
+    """
+    Return a new (initialized) `tkinter.BooleanVar`.
+
+    @param default default boolean value
+    """
+    b = tkinter.BooleanVar()
+    b.set(default)
+    return b
+
+
 
 """Tag object used by the `Text` widget to hanndle string coloring."""
 Tag = namedtuple('Tag', 'name pattern settings'.split())
@@ -332,6 +343,7 @@ class Text(tkinter.Frame):
     def __init__(self, parent, **kwargs):
         tkinter.Frame.__init__(self, parent)
         self._scroll_limit = LINES_LIMIT
+        self._scroll_on_output = BooleanVar(True)
         self._num_lines = 0
         self._tags = []
 
@@ -346,9 +358,13 @@ class Text(tkinter.Frame):
         horiz_scroll = tkinter.Scrollbar(self, orient=tkinter.HORIZONTAL)
         popup = tkinter.Menu(self, tearoff=0)
 
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
+        popup.add_checkbutton(
+                label="Scroll on output".ljust(20),
+                onvalue=True, offvalue=False, variable=self._scroll_on_output)
         popup.add_command(label="Clear".ljust(20), command=self.clear)
 
         text.grid(row=0, column=0, sticky='NSEW')
@@ -427,7 +443,8 @@ class Text(tkinter.Frame):
         self.text.config(state=tkinter.DISABLED)
 
         # Scroll to the bottom
-        self.text.yview(tkinter.MOVETO, 1.0)
+        if self._scroll_on_output.get():
+            self.text.yview(tkinter.MOVETO, 1.0)
 
     def _highlight_pattern(self, start, end, pattern, tag_name):
         """

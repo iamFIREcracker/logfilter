@@ -1,16 +1,21 @@
-2012-08-10 (0.3.1dev)
+0.4.0dev
+- Fix a bug where matched strings were not colored when the number of filters
+  was greater than the size of the color palette
+- Install the application as a gui script (on Windows, do not open a cmd.exe)
+
+0.3.1dev (2012-08-10)
 - Add right-click menu with an entry to clear the text widget (issue #10)
 - Better window focus management on new content read from the file (issue #12)
 - Add configuration setting to enable infinite scroll (issue #11)
 
-2012-07-07 (0.2.1dev)
+0.2.1dev (2012-07-07)
 - Add python 3.2 compatibility
 
-2012-06-27 (0.1.2dev)
+0.1.2dev (2012-06-27)
 - Better packaging (create a console script to run logfilter)
 
-2012-06-25 (0.1.1)
+0.1.1 (2012-06-25)
 - Add MANIFEST.in file (issue #9)
 
-2012-06-02 (0.1.0)
+0.1.0 (2012-06-02)
 - First public release

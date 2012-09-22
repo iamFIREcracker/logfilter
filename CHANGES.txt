@@ -1,4 +1,4 @@
-0.4.0dev
+0.4.0dev (2012-09-22)
 - Fix a bug where matched strings were not colored when the number of filters
   was greater than the size of the color palette
 - Install the application as a gui script (on Windows, do not open a cmd.exe)

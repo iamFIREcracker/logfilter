@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import datetime
+import os
 import re
 import time
 import threading
@@ -48,6 +49,8 @@ _TAG_PALETTE = (
 """Application title template"""
 _TITLE = 'logfilter: {filename}'
 
+"""Default initial directory used by the file chooser widget"""
+_INITIALDIR = os.path.expanduser('~')
 
 """Number of string filters."""
 NUM_FILTERS = 1
@@ -304,8 +307,11 @@ class FileChooser(tkinter.Frame):
         """
         Open a filechooser dialog and set the internal filename.
         """
+        prev = self.filename.get()
+        initialdir = os.path.dirname(prev) if prev else _INITIALDIR
+
         filename = filedialog.askopenfilename(
-                parent=self, title='Choose a file')
+                parent=self, initialdir=initialdir, title='Choose a file')
         if filename:
             self.filename.set(filename)
 

@@ -64,6 +64,9 @@ LINES_UNLIMITED = -1
 """Default sleep interval"""
 SLEEP_INTERVAL = 1.0
 
+"""Catch all filter"""
+CATCH_ALL = ['^']
+
 
 
 def debug(func):
@@ -474,10 +477,12 @@ class Text(tkinter.Frame):
 
 
 @debug
-def filter_thread_spawner_body(lines, interval, filter_queue, lines_queue):
+def filter_thread_spawner_body(catchall, lines, interval, filter_queue,
+        lines_queue):
     """
     Spawn a file filter thread as soon as a filter is read from the queue.
 
+    @param catchall flag indicating all the lines of the file should be returned
     @param lines line used to skip stale lines
     @param interval polling interval
     @param filter_queue message queue containing the filter to apply
@@ -495,6 +500,8 @@ def filter_thread_spawner_body(lines, interval, filter_queue, lines_queue):
             break
 
         (filename, filters) = item
+        if catchall:
+            filters = CATCH_ALL
         stop = threading.Event()
         worker = threading.Thread(
             target=file_observer_body,
@@ -673,6 +680,10 @@ def _build_parser():
     parser.add_argument(
             '-e', '--regexp', dest='filters', action='append',
             help='Filter presets', metavar='FILTERS')
+    parser.add_argument(
+            '-a', '--catch-all', dest='catchall', default=False,
+            help='Catch all the lines and highilight those matching filters',
+            action='store_true')
 
     return parser
 
@@ -701,7 +712,7 @@ def _main():
 
     filter_thread_spawner = threading.Thread(
             target=filter_thread_spawner_body,
-            args=(args.limit, args.interval, filter_queue,
+            args=(args.catchall, args.limit, args.interval, filter_queue,
                 lines_queue))
     filter_thread_spawner.start()
 

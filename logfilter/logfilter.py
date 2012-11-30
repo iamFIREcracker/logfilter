@@ -162,6 +162,7 @@ class Gui(tkinter.Tk):
         self.text = Text(self, bg='#222', fg='#eee', wrap=tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
+        self.text.set_filename(filename)
 
     def _update(self):
         """
@@ -192,6 +193,7 @@ class Gui(tkinter.Tk):
         filename = self.file_chooser.get_filename()
         self.title(_TITLE.format(filename=filename))
         filter_strings = [s.get() for s in self.filter_strings]
+        self.text.set_filename(filename)
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
                     for ((n, c), f) in zip(cycle(_TAG_PALETTE), filter_strings))
@@ -354,6 +356,7 @@ class Text(tkinter.Frame):
         self._scroll_limit = LINES_LIMIT
         self._scroll_on_output = BooleanVar(True)
         self._num_lines = 0
+        self._filename = ''
         self._tags = []
 
         self._initialize(**kwargs)
@@ -375,6 +378,7 @@ class Text(tkinter.Frame):
                 label="Scroll on output".ljust(20),
                 onvalue=True, offvalue=False, variable=self._scroll_on_output)
         popup.add_command(label="Clear".ljust(20), command=self.clear)
+        popup.add_command(label="Edit".ljust(20), command=self.edit)
 
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)
@@ -402,6 +406,14 @@ class Text(tkinter.Frame):
         """
         self._scroll_limit = scroll_limit
 
+    def set_filename(self, filename):
+        """
+        Set the name of the file from which we will receive updates.
+
+        @param filename filename
+        """
+        self._filename = filename
+
     def configure_tags(self, tags):
         """
         Configure text tags.
@@ -419,6 +431,14 @@ class Text(tkinter.Frame):
         self.text.delete(1.0, tkinter.END)
         self.text.config(state=tkinter.DISABLED)
         self._lines = 0
+
+    def edit(self):
+        """
+        Open the current file inside your preferred editor.
+        """
+        editor = os.environ['EDITOR']
+        filename = self._filename
+        os.system("{0} {1}".format(editor, filename))
 
     def append(self, lines):
         """

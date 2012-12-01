@@ -442,13 +442,24 @@ class Text(tkinter.Frame):
         self.text.config(state=tkinter.DISABLED)
         self._lines = 0
 
+    def _get_editor(self):
+        """
+        Return the editor to use to open the current file.
+
+        The function will look for environment variables in the given order:
+        LFEDITOR, VISUAL and finally EDITOR
+        """
+        for name in 'LFEDITOR VISUAL EDITOR'.split(' '):
+            if name in os.environ:
+                return os.environ[name]
+
     def edit(self):
         """
         Open the current file inside your preferred editor.
         """
-        editor = os.environ['EDITOR']
-        filename = self._filename
-        os.system("{0} {1}".format(editor, filename))
+        cmd = self._get_editor()
+        cmd = cmd.replace('FILE', self._filename)
+        os.system(cmd)
 
     def append(self, lines):
         """

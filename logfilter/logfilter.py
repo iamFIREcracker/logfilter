@@ -165,7 +165,7 @@ class Gui(tkinter.Tk):
         button.grid(row=0, column=len(filters), sticky='EW')
 
         # Container2
-        self.text = Text(self, bg='#222', fg='#eee', wrap=tkinter.NONE)
+        self.text = Text(self, bg='#1B1D1E', fg='#eee', wrap=tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
         self.text.set_filename(filename)
@@ -397,7 +397,7 @@ class Text(tkinter.Frame):
                 label="Greedy coloring".ljust(20),
                 onvalue=True, offvalue=False, variable=self._greedy_coloring)
 
-        text.tag_config('selected', background="#3E3D32")
+        text.tag_config('selected', background="#232728")
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)
         text.config(xscrollcommand=horiz_scroll.set)
@@ -417,13 +417,13 @@ class Text(tkinter.Frame):
     def _select(self, event):
         # Set previous selected line as default
         if self._selected_line is not UNSELECTED:
-            line_end = self.text.index("{0} lineend".format(self._selected_line))
+            line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
             self.text.tag_remove("selected", self._selected_line, line_end)
 
         # Highlight new line
         self._selected_line = self.text.index(
                 "@{0},{1} linestart".format(event.x, event.y))
-        line_end = self.text.index("{0} lineend".format(self._selected_line))
+        line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
         self.text.tag_add("selected", self._selected_line, line_end)
 
         # Hide the menu

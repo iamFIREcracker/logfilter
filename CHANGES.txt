@@ -1,4 +1,11 @@
-0.5.0dev
+0.6.0dev
+- ISSUE-23: add popup menu entry to disable *raise on output*
+- ISSUE-19: add popup menu entry to enable line greedy coloring (multiple
+  matches for the same filter in the same line)
+- ISSUE-21: add support for opening the current file in a configured external
+  editor
+
+0.5.0dev (2012-10-17)
 - ISSUE-18: add a catch-all filter (enabled with `-a` or `--catch-all`) which
   force the application to output all the lines of the file.  Moreover, the
   lines matching filters expressions, will be highlighted as well

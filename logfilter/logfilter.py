@@ -252,7 +252,6 @@ class Gui(tkinter.Tk):
         """
         def wrapped():
             self.text.clear()
-            self._lines = 0
         self.schedule(wrapped)
 
     def append_text(self, lines):
@@ -358,8 +357,10 @@ class Text(tkinter.Frame):
         self._scroll_on_output = BooleanVar(True)
         self._raise_on_output = BooleanVar(True)
         self._greedy_coloring = BooleanVar(False)
-        self._num_lines = 0
+        self._lines = 0
+        self._line_numbers = deque()
         self._filename = ''
+        self._selected_line = -1
         self._tags = []
 
         self._initialize(**kwargs)
@@ -405,7 +406,12 @@ class Text(tkinter.Frame):
         self.text = text
         self.popup = popup
 
+    def _select(self, event):
+        self._selected_line = int(float(self.text.index(
+                "@{0},{1} linestart".format(event.x, event.y))))
+
     def _show_popup(self, event):
+        self._select(event)
         self.popup.post(event.x_root, event.y_root)
 
     def configure_scroll_limit(self, scroll_limit):
@@ -441,6 +447,7 @@ class Text(tkinter.Frame):
         self.text.delete(1.0, tkinter.END)
         self.text.config(state=tkinter.DISABLED)
         self._lines = 0
+        self._line_numbers = deque()
 
     def _get_editor(self):
         """
@@ -453,12 +460,28 @@ class Text(tkinter.Frame):
             if name in os.environ:
                 return os.environ[name]
 
+    def _get_row(self):
+        """
+        Get the file row associated with the mouse event.
+        """
+        index = self._selected_line - 1
+        if index >= len(self._line_numbers):
+            if self._line_numbers:
+                return str(self._line_numbers[-1])
+            else:
+                return str(1)
+        else:
+            return str(self._line_numbers[index])
+
     def edit(self):
         """
         Open the current file inside your preferred editor.
         """
+        # Deques are not optimized for random access, but given that the edit
+        # operation is not so frequent, we can just tolerate that
         cmd = self._get_editor()
         cmd = cmd.replace('FILE', self._filename)
+        cmd = cmd.replace('ROW', self._get_row())
         os.system(cmd)
 
     def append(self, lines):
@@ -484,11 +507,13 @@ class Text(tkinter.Frame):
             [highlight_tag(t) for t in list(self._tags)]
 
             self._lines += 1
+            self._line_numbers.append(i)
             if (self._scroll_limit != LINES_UNLIMITED
                     and self._lines > self._scroll_limit):
                 # delete from row 1, column 0, to row 2, column 0 (first line)
                 self.text.delete(1.0, 2.0)
                 self._lines -= 1
+                self._line_numbers.popleft()
 
         self.text.config(state=tkinter.DISABLED)
 

@@ -7,6 +7,7 @@ import datetime
 import os
 import re
 import time
+import subprocess
 import threading
 from argparse import ArgumentParser
 from collections import deque
@@ -502,7 +503,7 @@ class Text(tkinter.Frame):
         cmd = self._get_editor()
         cmd = cmd.replace('FILE', self._filename)
         cmd = cmd.replace('ROW', self._get_row())
-        os.system(cmd)
+        subprocess.Popen(cmd, shell=True)
 
     def append(self, lines):
         """

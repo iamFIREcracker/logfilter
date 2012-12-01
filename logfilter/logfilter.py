@@ -68,6 +68,12 @@ CATCH_ALL = ['^']
 """End of file sentinel"""
 EOF = object()
 
+"""List of env variables to check while editing a file"""
+EDITORS = 'LFEDITOR VISUAL EDITOR'.split(' ')
+
+"""Sentinel to check wether selected line has been initialized or not"""
+UNSELECTED = object()
+
 
 def debug(func):
     """
@@ -196,7 +202,7 @@ class Gui(tkinter.Tk):
         self.text.set_filename(filename)
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
-                    for ((n, c), f) in zip(cycle(_TAG_PALETTE), filter_strings))
+                for ((n, c), f) in zip(cycle(_TAG_PALETTE), filter_strings))
         (func, args, kwargs) = self.on_new_filter_listener
         args = [filename, filter_strings] + list(args)
         func(*args, **kwargs)
@@ -360,7 +366,7 @@ class Text(tkinter.Frame):
         self._lines = 0
         self._line_numbers = deque()
         self._filename = ''
-        self._selected_line = -1
+        self._selected_line = UNSELECTED
         self._tags = []
 
         self._initialize(**kwargs)
@@ -391,10 +397,12 @@ class Text(tkinter.Frame):
                 label="Greedy coloring".ljust(20),
                 onvalue=True, offvalue=False, variable=self._greedy_coloring)
 
+        text.tag_config('selected', background="#3E3D32")
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)
         text.config(xscrollcommand=horiz_scroll.set)
         text.config(state=tkinter.DISABLED)
+        text.bind("<Button-1>", self._select)
         text.bind("<Button-3>", self._show_popup)
 
         vert_scroll.grid(row=0, column=1, sticky='NS')
@@ -407,8 +415,20 @@ class Text(tkinter.Frame):
         self.popup = popup
 
     def _select(self, event):
-        self._selected_line = int(float(self.text.index(
-                "@{0},{1} linestart".format(event.x, event.y))))
+        # Set previous selected line as default
+        if self._selected_line is not UNSELECTED:
+            line_end = self.text.index("{0} lineend".format(self._selected_line))
+            self.text.tag_remove("selected", self._selected_line, line_end)
+
+        # Highlight new line
+        self._selected_line = self.text.index(
+                "@{0},{1} linestart".format(event.x, event.y))
+        line_end = self.text.index("{0} lineend".format(self._selected_line))
+        self.text.tag_add("selected", self._selected_line, line_end)
+
+        # Hide the menu
+        self.popup.unpost()
+
 
     def _show_popup(self, event):
         self._select(event)
@@ -456,7 +476,7 @@ class Text(tkinter.Frame):
         The function will look for environment variables in the given order:
         LFEDITOR, VISUAL and finally EDITOR
         """
-        for name in 'LFEDITOR VISUAL EDITOR'.split(' '):
+        for name in EDITORS:
             if name in os.environ:
                 return os.environ[name]
 
@@ -464,21 +484,21 @@ class Text(tkinter.Frame):
         """
         Get the file row associated with the mouse event.
         """
-        index = self._selected_line - 1
+        index = int(self._selected_line.split('.')[0]) - 1
         if index >= len(self._line_numbers):
             if self._line_numbers:
                 return str(self._line_numbers[-1])
             else:
                 return str(1)
         else:
+            # Deques are not optimized for random access, but given that the
+            # edit operation is not so frequent, we can just tolerate that
             return str(self._line_numbers[index])
 
     def edit(self):
         """
         Open the current file inside your preferred editor.
         """
-        # Deques are not optimized for random access, but given that the edit
-        # operation is not so frequent, we can just tolerate that
         cmd = self._get_editor()
         cmd = cmd.replace('FILE', self._filename)
         cmd = cmd.replace('ROW', self._get_row())
@@ -776,7 +796,7 @@ def _build_parser():
             help='Filter presets', metavar='FILTERS')
     parser.add_argument(
             '-a', '--catch-all', dest='catchall', default=False,
-            help='Catch all the lines and highilight those matching filters',
+            help='Catch all the lines and highlight those matching filters',
             action='store_true')
 
     return parser

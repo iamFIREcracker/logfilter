@@ -1,7 +1,3 @@
-=========
-logfilter
-=========
-
 **logfilter** is a python application handy for real-time processing of very
 long log files.
 

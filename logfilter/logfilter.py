@@ -268,7 +268,8 @@ class Gui(tkinter.Tk):
         """
         def wrapped():
             self.text.append(lines)
-            self.raise_()
+            if self.text.raise_on_output:
+                self.raise_()
         self.schedule(wrapped)
 
 
@@ -355,6 +356,7 @@ class Text(tkinter.Frame):
         tkinter.Frame.__init__(self, parent)
         self._scroll_limit = LINES_LIMIT
         self._scroll_on_output = BooleanVar(True)
+        self._raise_on_output = BooleanVar(False)
         self._num_lines = 0
         self._filename = ''
         self._tags = []
@@ -377,6 +379,9 @@ class Text(tkinter.Frame):
         popup.add_checkbutton(
                 label="Scroll on output".ljust(20),
                 onvalue=True, offvalue=False, variable=self._scroll_on_output)
+        popup.add_checkbutton(
+                label="Raise on output".ljust(20),
+                onvalue=True, offvalue=False, variable=self._raise_on_output)
         popup.add_command(label="Clear".ljust(20), command=self.clear)
         popup.add_command(label="Edit".ljust(20), command=self.edit)
 
@@ -494,6 +499,10 @@ class Text(tkinter.Frame):
 
         match_end = '{0}+{1}c'.format(index, count.get())
         self.text.tag_add(tag_name, index, match_end)
+
+    @property
+    def raise_on_output(self):
+        return self._raise_on_output.get()
 
 
 @debug

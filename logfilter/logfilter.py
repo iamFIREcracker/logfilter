@@ -356,7 +356,7 @@ class Text(tkinter.Frame):
         tkinter.Frame.__init__(self, parent)
         self._scroll_limit = LINES_LIMIT
         self._scroll_on_output = BooleanVar(True)
-        self._raise_on_output = BooleanVar(False)
+        self._raise_on_output = BooleanVar(True)
         self._num_lines = 0
         self._filename = ''
         self._tags = []

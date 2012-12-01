@@ -357,6 +357,7 @@ class Text(tkinter.Frame):
         self._scroll_limit = LINES_LIMIT
         self._scroll_on_output = BooleanVar(True)
         self._raise_on_output = BooleanVar(True)
+        self._greedy_coloring = BooleanVar(False)
         self._num_lines = 0
         self._filename = ''
         self._tags = []
@@ -385,6 +386,9 @@ class Text(tkinter.Frame):
         popup.add_checkbutton(
                 label="Auro raise".ljust(20),
                 onvalue=True, offvalue=False, variable=self._raise_on_output)
+        popup.add_checkbutton(
+                label="Greedy coloring".ljust(20),
+                onvalue=True, offvalue=False, variable=self._greedy_coloring)
 
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)
@@ -493,13 +497,18 @@ class Text(tkinter.Frame):
         @param pattern string pattern matching the tag
         @param tag_name name of the tag to associate with matching strings
         """
-        count = tkinter.IntVar()
-        index = self.text.search(pattern, start, end, count=count, regexp=True)
-        if not index:
-            return
+        while True:
+            count = tkinter.IntVar()
+            index = self.text.search(pattern, start, end, count=count, regexp=True)
+            if not index:
+                return
 
-        match_end = '{0}+{1}c'.format(index, count.get())
-        self.text.tag_add(tag_name, index, match_end)
+            match_end = '{0}+{1}c'.format(index, count.get())
+            self.text.tag_add(tag_name, index, match_end)
+            start = match_end
+
+            if not self._greedy_coloring.get():
+                return
 
     @property
     def raise_on_output(self):

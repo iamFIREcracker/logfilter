@@ -11,10 +11,8 @@ import threading
 from argparse import ArgumentParser
 from collections import deque
 from collections import namedtuple
-from functools import partial
 from itertools import cycle
 from itertools import takewhile
-from operator import ne
 
 from _compact import filedialog
 from _compact import filter
@@ -67,6 +65,8 @@ SLEEP_INTERVAL = 1.0
 """Catch all filter"""
 CATCH_ALL = ['^']
 
+"""End of file sentinel"""
+EOF = object()
 
 
 def debug(func):
@@ -476,7 +476,7 @@ class Text(tkinter.Frame):
 
         self.text.config(state=tkinter.NORMAL)
 
-        for line in lines:
+        for (i, line) in lines:
             start = self.text.index('{0} - 1 lines'.format(tkinter.END))
             end = self.text.index(tkinter.END)
 
@@ -570,16 +570,34 @@ def last(lines, iterable):
                  all the lines will be buffered)
     @param iterable iterable containing lines to be processed.
     """
+    def noteof(aggregate):
+        (i, line) = aggregate
+        return line is not EOF
+
     lines = lines if lines != LINES_UNLIMITED else None
     # Fill the buffer of lines, untill an EOF is received
-    for line in deque(takewhile(partial(ne, ''), iterable), maxlen=lines):
+    for line in deque(takewhile(noteof, iterable), maxlen=lines):
         yield line
-    yield ''
+    yield next(iterable)
 
     # Now return each item produced by the iterable
     for line in iterable:
         yield line
 
+
+def lineenumerate(iterable):
+    """
+    Return a generator which prepend a line number in front of each line
+    extracted from the given iterable.
+
+    The function properly takes into account EOF messages by yielding them
+    without increase the line number.
+    """
+    i = 1
+    for line in iterable:
+        yield (i, line)
+        if line is not EOF:
+            i += 1
 
 def tail_f(filename):
     """
@@ -596,7 +614,7 @@ def tail_f(filename):
         while True:
             for line in f:
                 yield line
-            yield ''
+            yield EOF
 
             # Kind of rewind
             where = f.tell()
@@ -614,7 +632,7 @@ def grep_e(*exps):
     """
     regexps = [re.compile(exp) for exp in exps]
 
-    def wrapper(line):
+    def wrapper(aggregate):
         """
         Match input string with the set of preloaded regular expressions.
 
@@ -624,7 +642,8 @@ def grep_e(*exps):
         @param line string to check for regular expressions matches.
         @return True 
         """
-        return line == '' or any([reg.search(line) for reg in regexps])
+        (i, line) = aggregate
+        return line == EOF or any([reg.search(line) for reg in regexps])
 
     return wrapper
 
@@ -647,21 +666,21 @@ def file_observer_body(filename, lines, interval, filters, lines_queue, stop):
     @param stop `threading.Event` object, used to stop the thread.
     """
     line_buffer = []
-    for line in filter(grep_e(*filters), last(lines, tail_f(filename))):
+    for (i, line) in filter(grep_e(*filters), last(lines, lineenumerate(tail_f(filename)))):
         if stop.isSet():
             break
 
-        if (not line and line_buffer) or (len(line_buffer) == _BATCH_LIMIT):
+        if (line is EOF and line_buffer) or (len(line_buffer) == _BATCH_LIMIT):
             lines_queue.put(line_buffer)
             #print '+', len(line_buffer), 'qsize', lines_queue.qsize()
             line_buffer = []
 
-        if not line:
+        if line is EOF:
             # We reched the EOF, hence wait for new content
             time.sleep(interval)
             continue
 
-        line_buffer.append(line)
+        line_buffer.append((i, line))
 
 
 def gui_updater_body(gui, lines_queue):

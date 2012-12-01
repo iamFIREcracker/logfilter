@@ -376,14 +376,15 @@ class Text(tkinter.Frame):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        popup.add_checkbutton(
-                label="Scroll on output".ljust(20),
-                onvalue=True, offvalue=False, variable=self._scroll_on_output)
-        popup.add_checkbutton(
-                label="Raise on output".ljust(20),
-                onvalue=True, offvalue=False, variable=self._raise_on_output)
         popup.add_command(label="Clear".ljust(20), command=self.clear)
         popup.add_command(label="Edit".ljust(20), command=self.edit)
+        popup.add_separator()
+        popup.add_checkbutton(
+                label="Auto scroll".ljust(20),
+                onvalue=True, offvalue=False, variable=self._scroll_on_output)
+        popup.add_checkbutton(
+                label="Auro raise".ljust(20),
+                onvalue=True, offvalue=False, variable=self._raise_on_output)
 
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)

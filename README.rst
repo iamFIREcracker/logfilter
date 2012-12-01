@@ -87,18 +87,25 @@ Edit files
 ----------
 
 Since version *0.6.0dev*, it is possible to configure **logfilter** to open the
-monitored file with an external editor: the application will indeed look for
-*special* environment variables (i.e. ``LFEDITOR`` first, then ``VISUAL`` and
-finally ``EDITOR``) containing information regarding the external application to
-launch to edit the file at the line of interest.
+monitored file with an external editor.
 
-To make ``gvim`` your external editor, run ``logfilter`` as follows::
+The application will look for *special* environment variables (i.e.
+``LFEDITOR`` first, then ``VISUAL`` and finally ``EDITOR``) containing
+information regarding the external application to launch to edit the file at the
+line of interest.
+
+For example, to make ``gvim`` your external editor, run ``logfilter`` as
+follows::
 
     LFEDITOR="gvim FILE +ROW" LOGFILE.log -e FOO
 
 Otherwise, if you are on Windows and prefer to use ``TextPad``::
 
     set LFEDITOR="C:\Programs\TextPad 4\TextPad.exe" FILE(ROW,0)& logfilter
+
+The ``FILE`` and ``ROW`` markers will be automatically replaced by **logfilter**
+with the name of the monitored file and with the current selected line
+respectively.
 
 
 Changelog

@@ -35,6 +35,13 @@ _POLL_INTERVAL = 66
 """Stop message used to stop threads."""
 _STOP_MESSAGE = None
 
+
+FOREGROUND = '#F8F8F2'
+BACKGROUND = '#1B1D1E'
+CURRENTLINEBACKGROUND = '#232728'
+SELECTFOREGROUND = FOREGROUND
+SELECTBACKGROUND = '#403D3D'
+
 """Tag color palette."""
 _TAG_PALETTE = (
         ('red', '#E52222'),
@@ -166,7 +173,12 @@ class Gui(tkinter.Tk):
         button.grid(row=0, column=len(filters), sticky='EW')
 
         # Container2
-        self.text = Text(self, bg='#1B1D1E', fg='#eee', wrap=tkinter.NONE)
+        self.text = Text(
+                self, foreground=FOREGROUND, background=BACKGROUND,
+                selectforeground=SELECTFOREGROUND,
+                selectbackground=SELECTBACKGROUND,
+                inactiveselectbackground=SELECTBACKGROUND,
+                cursor='xterm red green', wrap=tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
         self.text.set_filename(filename)
@@ -398,13 +410,15 @@ class Text(tkinter.Frame):
                 label="Greedy coloring".ljust(20),
                 onvalue=True, offvalue=False, variable=self._greedy_coloring)
 
-        text.tag_config('selected', background="#232728")
+        text.tag_config('currentline', background=CURRENTLINEBACKGROUND)
+        text.tag_config('selection', background=SELECTBACKGROUND)
         text.grid(row=0, column=0, sticky='NSEW')
         text.config(yscrollcommand=vert_scroll.set)
         text.config(xscrollcommand=horiz_scroll.set)
         text.config(state=tkinter.DISABLED)
-        text.bind("<Button-1>", self._select)
+        text.bind("<Button-1>", self._highlight_current)
         text.bind("<Button-3>", self._show_popup)
+        text.bind("<<Selection>>", self._on_selection_change)
 
         vert_scroll.grid(row=0, column=1, sticky='NS')
         vert_scroll.config(command=text.yview)
@@ -415,24 +429,41 @@ class Text(tkinter.Frame):
         self.text = text
         self.popup = popup
 
-    def _select(self, event):
-        # Set previous selected line as default
+    def _clear_selection(self):
+        try:
+            self.text.tag_remove("sel", "sel.first", "sel.last")
+        except tkinter.TclError:
+            pass
+
+    def _clear_current(self):
         if self._selected_line is not UNSELECTED:
             line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
-            self.text.tag_remove("selected", self._selected_line, line_end)
+            self.text.tag_remove("currentline", self._selected_line, line_end)
+            self._selected_line = UNSELECTED
 
-        # Highlight new line
+    def _highlight_current(self, event):
+        # Clear old current line
+        self._clear_current()
+
+        # .. and highlight the new line
         self._selected_line = self.text.index(
                 "@{0},{1} linestart".format(event.x, event.y))
         line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
-        self.text.tag_add("selected", self._selected_line, line_end)
+        self.text.tag_add("currentline", self._selected_line, line_end)
 
-        # Hide the menu
+        # Finally, hide the menu
         self.popup.unpost()
 
+    def _on_selection_change(self, event):
+        try:
+            if self.text.get("sel.first", "sel.last"):
+                self._clear_current();
+        except tkinter.TclError:
+            pass
 
     def _show_popup(self, event):
-        self._select(event)
+        self._clear_selection()
+        self._highlight_current(event)
         self.popup.post(event.x_root, event.y_root)
 
     def configure_scroll_limit(self, scroll_limit):

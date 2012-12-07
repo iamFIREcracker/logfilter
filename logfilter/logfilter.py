@@ -397,8 +397,8 @@ class Text(tkinter.Frame):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        popup.add_command(label="Clear".ljust(20), command=self.clear)
         popup.add_command(label="Edit".ljust(20), command=self.edit)
+        popup.add_command(label="Clear".ljust(20), command=self.clear)
         popup.add_separator()
         popup.add_checkbutton(
                 label="Auto scroll".ljust(20),

@@ -519,7 +519,7 @@ class Text(tkinter.Frame):
         """
         Get the file row associated with the mouse event.
         """
-        index = int(self._selected_line.split('.')[0]) - 1
+        index = int(float(self._selected_line)) - 1
         if index >= len(self._line_numbers):
             if self._line_numbers:
                 return str(self._line_numbers[-1])

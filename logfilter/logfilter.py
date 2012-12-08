@@ -389,8 +389,8 @@ class Text(tkinter.Frame):
         Initialize the text widget.
         """
         text = tkinter.Text(self, **kwargs)
-        vert_scroll = AutoScrollbar(self)
-        horiz_scroll = AutoScrollbar(self, orient=tkinter.HORIZONTAL)
+        vert_scroll = tkinter.Scrollbar(self)
+        horiz_scroll = tkinter.Scrollbar(self, orient=tkinter.HORIZONTAL)
         popup = tkinter.Menu(self, tearoff=0)
 
 

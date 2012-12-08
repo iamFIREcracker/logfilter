@@ -379,7 +379,7 @@ class Text(tkinter.Frame):
         self._lines = 0
         self._line_numbers = deque()
         self._filename = ''
-        self._selected_line = UNSELECTED
+        self._current_line = UNSELECTED
         self._tags = []
 
         self._initialize(**kwargs)
@@ -423,7 +423,7 @@ class Text(tkinter.Frame):
         text.config(yscrollcommand=vert_scroll.set)
         text.config(xscrollcommand=horiz_scroll.set)
         text.config(state=tkinter.DISABLED)
-        text.bind("<Button-1>", self._highlight_current)
+        text.bind("<Button-1>", self._highlight_current_line)
         text.bind("<Button-3>", self._show_popup)
         text.bind("<<Selection>>", self._on_selection_change)
 
@@ -442,23 +442,30 @@ class Text(tkinter.Frame):
         except tkinter.TclError:
             pass
 
-    def _clear_current(self):
-        if self._selected_line is not UNSELECTED:
-            line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
-            self.text.tag_remove("currentline", self._selected_line, line_end)
-            self._selected_line = UNSELECTED
+    def _clear_current_line(self):
+        if self._current_line is not UNSELECTED:
+            line_end = self.text.index("{0} + 1 lines".format(self._current_line))
+            self.text.tag_remove("currentline", self._current_line, line_end)
+            self._current_line = UNSELECTED
 
-    def _highlight_current(self, event):
+    def _extract_row(self, rowcol):
+        """
+        Given a tkinter position information (i.e. 10.2, where 10 is the row
+        number, and 2 is the column one), extract the information of the row
+        """
+        return int(float(rowcol))
+
+    def _highlight_current_line(self, event):
         # Clear old current line
-        self._clear_current()
+        self._clear_current_line()
 
         # .. and highlight the new line
         newline = self.text.index(
                 "@{0},{1} linestart".format(event.x, event.y))
-        if int(float(newline)) <= self._lines:
-            self._selected_line = newline
-            line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
-            self.text.tag_add("currentline", self._selected_line, line_end)
+        if self._extract_row(newline) <= self._lines:
+            self._current_line = newline
+            line_end = self.text.index("{0} + 1 lines".format(self._current_line))
+            self.text.tag_add("currentline", self._current_line, line_end)
 
         # Finally, hide the menu
         self.popup.unpost()
@@ -466,13 +473,13 @@ class Text(tkinter.Frame):
     def _on_selection_change(self, event):
         try:
             if self.text.get("sel.first", "sel.last"):
-                self._clear_current();
+                self._clear_current_line();
         except tkinter.TclError:
             pass
 
     def _show_popup(self, event):
         self._clear_selection()
-        self._highlight_current(event)
+        self._highlight_current_line(event)
         self.popup.post(event.x_root, event.y_root)
 
     def configure_scroll_limit(self, scroll_limit):
@@ -521,19 +528,20 @@ class Text(tkinter.Frame):
             if name in os.environ:
                 return os.environ[name]
 
-    def _get_row(self):
+    def _get_file_line_number(self):
         """
         Get the file row associated with the mouse event.
         """
-        index = int(float(self._selected_line)) - 1
+        index = self._extract_row(self._current_line) - 1
         if index >= len(self._line_numbers):
             if self._line_numbers:
                 return str(self._line_numbers[-1])
             else:
                 return str(1)
         else:
-            # Deques are not optimized for random access, but given that the
-            # edit operation is not so frequent, we can just tolerate that
+            # Deques are not optimized for random access, but given that 
+            # edit operations are not so frequent we can just tolerate this
+            # inefficiency
             return str(self._line_numbers[index])
 
     def edit(self):
@@ -542,7 +550,7 @@ class Text(tkinter.Frame):
         """
         cmd = self._get_editor()
         cmd = cmd.replace('FILE', self._filename)
-        cmd = cmd.replace('ROW', self._get_row())
+        cmd = cmd.replace('ROW', self._get_file_line_number())
         subprocess.Popen(cmd, shell=True)
 
     def append(self, lines):
@@ -576,9 +584,9 @@ class Text(tkinter.Frame):
                 self._lines -= 1
                 self._line_numbers.popleft()
 
-                if self._selected_line is not UNSELECTED:
-                    self._selected_line = self.text.index(
-                            "{0} - 1 lines".format(self._selected_line))
+                if self._current_line is not UNSELECTED:
+                    self._current_line = self.text.index(
+                            "{0} - 1 lines".format(self._current_line))
 
         self.text.config(state=tkinter.DISABLED)
 

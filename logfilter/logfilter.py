@@ -139,7 +139,7 @@ class Gui(tkinter.Tk):
 
         self._update()
 
-    def _initialize(self, filename, filters, scroll_limit):
+    def _initialize(self, font, filename, filters, scroll_limit):
         """
         Initialize the layout of the GUI
         """
@@ -178,7 +178,7 @@ class Gui(tkinter.Tk):
                 selectforeground=SELECTFOREGROUND,
                 selectbackground=SELECTBACKGROUND,
                 inactiveselectbackground=SELECTBACKGROUND,
-                cursor='xterm red green', wrap=tkinter.NONE)
+                font=font, wrap=tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
         self.text.set_filename(filename)
@@ -830,6 +830,8 @@ def _build_parser():
             '-a', '--catch-all', dest='catchall', default=False,
             help='Catch all the lines and highlight those matching filters',
             action='store_true')
+    parser.add_argument(
+            '--font', dest='font', help='Font used by the application')
 
     return parser
 
@@ -849,7 +851,7 @@ def _main():
     lines_queue = queue.Queue()
 
     gui = Gui(
-            None, filename=args.filename, filters=filters,
+            None, font=args.font, filename=args.filename, filters=filters,
             scroll_limit=args.limit)
     gui.register_listener('quit', quit, filter_queue, lines_queue)
     gui.register_listener('new_filter', apply_filters, gui, filter_queue)

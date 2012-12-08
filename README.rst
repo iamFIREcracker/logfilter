@@ -116,6 +116,9 @@ Changelog
 - ISSUE-24: fix a bug where the selected text of the current line was not
   highlighted properly
 - ISSUE-27: add `--font` command line option to configure the font
+- ISSUE-28: fix a bug where multiple line end up being selected when a new line
+  was rendered in the text widget
+- ISSUE-25: fix PY3K compatibility (there was a problem with local imports)
 
 0.6.0dev:
 

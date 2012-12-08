@@ -15,12 +15,12 @@ from collections import namedtuple
 from itertools import cycle
 from itertools import takewhile
 
-from _compact import filedialog
-from _compact import filter
-from _compact import func_get_name
-from _compact import tkinter
-from _compact import queue
-from _compact import range
+from ._compact import filedialog
+from ._compact import filter
+from ._compact import func_get_name
+from ._compact import tkinter
+from ._compact import queue
+from ._compact import range
 
 
 """Number of lines to collect before telling the gui to refresh."""
@@ -474,10 +474,12 @@ class Text(tkinter.Frame):
         self._clear_current()
 
         # .. and highlight the new line
-        self._selected_line = self.text.index(
+        newline = self.text.index(
                 "@{0},{1} linestart".format(event.x, event.y))
-        line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
-        self.text.tag_add("currentline", self._selected_line, line_end)
+        if int(float(newline)) <= self._lines:
+            self._selected_line = newline
+            line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
+            self.text.tag_add("currentline", self._selected_line, line_end)
 
         # Finally, hide the menu
         self.popup.unpost()
@@ -544,7 +546,7 @@ class Text(tkinter.Frame):
         """
         Get the file row associated with the mouse event.
         """
-        index = int(self._selected_line.split('.')[0]) - 1
+        index = int(float(self._selected_line)) - 1
         if index >= len(self._line_numbers):
             if self._line_numbers:
                 return str(self._line_numbers[-1])
@@ -602,6 +604,10 @@ class Text(tkinter.Frame):
                 self._lines -= 1
                 self._line_numbers.popleft()
 
+                if self._selected_line is not UNSELECTED:
+                    self._selected_line = self.text.index(
+                            "{0} - 1 lines".format(self._selected_line))
+
         self.text.config(state=tkinter.DISABLED)
         self.linepanel.config(state=tkinter.DISABLED)
 
@@ -655,10 +661,10 @@ class AutoScrollbar(tkinter.Scrollbar):
         tkinter.Scrollbar.set(self, lo, hi)
 
     def pack(self, **kw):
-        raise tkinter.TclError, "cannot use pack with this widget"
+        raise tkinter.TclError("cannot use pack with this widget")
 
     def place(self, **kw):
-        raise tkinter.TclError, "cannot use place with this widget"
+        raise tkinter.TclError("cannot use place with this widget")
 
 
 @debug

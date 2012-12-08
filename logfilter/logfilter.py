@@ -39,6 +39,7 @@ _STOP_MESSAGE = None
 FOREGROUND = '#F8F8F2'
 BACKGROUND = '#1B1D1E'
 CURRENTLINEBACKGROUND = '#232728'
+LINENRBACKGROUND = '#AAAAAA'
 SELECTFOREGROUND = FOREGROUND
 SELECTBACKGROUND = '#403D3D'
 
@@ -178,7 +179,8 @@ class Gui(tkinter.Tk):
                 selectforeground=SELECTFOREGROUND,
                 selectbackground=SELECTBACKGROUND,
                 inactiveselectbackground=SELECTBACKGROUND,
-                font=font, wrap=tkinter.NONE)
+                font=font, wrap=tkinter.NONE,
+                highlightthickness=0, takefocus=0, bd=0)
         self.text.grid(row=2, column=0, sticky='NSEW')
         self.text.configure_scroll_limit(scroll_limit)
         self.text.set_filename(filename)
@@ -375,6 +377,7 @@ class Text(tkinter.Frame):
         self._scroll_limit = LINES_LIMIT
         self._scroll_on_output = BooleanVar(True)
         self._raise_on_output = BooleanVar(True)
+        self._wrap_text = BooleanVar(False)
         self._greedy_coloring = BooleanVar(False)
         self._lines = 0
         self._line_numbers = deque()
@@ -388,18 +391,25 @@ class Text(tkinter.Frame):
         """
         Initialize the text widget.
         """
+        linepanel = tkinter.Text(
+                self, width=7, padx=7, highlightthickness=0, takefocus=0, bd=0,
+                background=BACKGROUND, foreground=LINENRBACKGROUND,
+                state='disabled')
         text = tkinter.Text(self, **kwargs)
         vert_scroll = tkinter.Scrollbar(self)
         horiz_scroll = tkinter.Scrollbar(self, orient=tkinter.HORIZONTAL)
         popup = tkinter.Menu(self, tearoff=0)
 
-
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
 
         popup.add_command(label="Edit".ljust(20), command=self.edit)
         popup.add_command(label="Clear".ljust(20), command=self.clear)
         popup.add_separator()
+        popup.add_checkbutton(
+                label="Wrap Text".ljust(20),
+                onvalue=True, offvalue=False, variable=self._wrap_text,
+                command=self.wrap_text)
         popup.add_checkbutton(
                 label="Greedy coloring".ljust(20),
                 onvalue=True, offvalue=False, variable=self._greedy_coloring)
@@ -411,24 +421,41 @@ class Text(tkinter.Frame):
                 label="Auro raise".ljust(20),
                 onvalue=True, offvalue=False, variable=self._raise_on_output)
 
+        linepanel.grid(row=0, column=0, sticky='NSW')
+        linepanel.config(yscrollcommand=self._on_scroll_change(vert_scroll, text))
+
         text.tag_config('currentline', background=CURRENTLINEBACKGROUND)
         text.tag_config('selection', background=SELECTBACKGROUND)
-        text.grid(row=0, column=0, sticky='NSEW')
-        text.config(yscrollcommand=vert_scroll.set)
+        text.grid(row=0, column=1, sticky='NSEW')
+        text.config(yscrollcommand=self._on_scroll_change(vert_scroll, linepanel))
         text.config(xscrollcommand=horiz_scroll.set)
         text.config(state=tkinter.DISABLED)
         text.bind("<Button-1>", self._highlight_current)
         text.bind("<Button-3>", self._show_popup)
         text.bind("<<Selection>>", self._on_selection_change)
 
-        vert_scroll.grid(row=0, column=1, sticky='NS')
-        vert_scroll.config(command=text.yview)
+        vert_scroll.grid(row=0, column=2, sticky='NS')
+        vert_scroll.config(command=self._on_scrollbar_change(text, linepanel))
 
-        horiz_scroll.grid(row=1, column=0, sticky='EW')
+        horiz_scroll.grid(row=1, column=1, sticky='EW')
         horiz_scroll.config(command=text.xview)
 
+        self.linepanel = linepanel
         self.text = text
         self.popup = popup
+
+
+    def _on_scroll_change(self, scrollbar, *widgets):
+        def inner(*args):
+            scrollbar.set(*args)
+            [w.yview('moveto', args[0]) for w in widgets]
+        return inner
+
+    def _on_scrollbar_change(self, *widgets):
+        def inner(*args):
+            print(*args)
+            [w.yview(*args) for w in widgets]
+        return inner
 
     def _clear_selection(self):
         try:
@@ -537,6 +564,10 @@ class Text(tkinter.Frame):
         cmd = cmd.replace('ROW', self._get_row())
         subprocess.Popen(cmd, shell=True)
 
+    def wrap_text(self):
+        wrap = tkinter.CHAR if self._wrap_text.get() else tkinter.NONE
+        self.text.config(wrap=wrap)
+
     def append(self, lines):
         """
         Append given lines to the text widget and try to color them.
@@ -550,6 +581,7 @@ class Text(tkinter.Frame):
             """
             self._highlight_pattern(start, end, tag.pattern, tag.name)
 
+        self.linepanel.config(state=tkinter.NORMAL)
         self.text.config(state=tkinter.NORMAL)
 
         for (i, line) in lines:
@@ -557,6 +589,7 @@ class Text(tkinter.Frame):
             end = self.text.index(tkinter.END)
 
             self.text.insert(tkinter.END, line)
+            self.linepanel.insert(tkinter.END, '{0:>7}\n'.format(i))
             [highlight_tag(t) for t in list(self._tags)]
 
             self._lines += 1
@@ -564,14 +597,17 @@ class Text(tkinter.Frame):
             if (self._scroll_limit != LINES_UNLIMITED
                     and self._lines > self._scroll_limit):
                 # delete from row 1, column 0, to row 2, column 0 (first line)
+                self.linepanel.delete(1.0, 2.0)
                 self.text.delete(1.0, 2.0)
                 self._lines -= 1
                 self._line_numbers.popleft()
 
         self.text.config(state=tkinter.DISABLED)
+        self.linepanel.config(state=tkinter.DISABLED)
 
         # Scroll to the bottom
         if self._scroll_on_output.get():
+            self.linepanel.yview(tkinter.MOVETO, 1.0)
             self.text.yview(tkinter.MOVETO, 1.0)
 
     def _highlight_pattern(self, start, end, pattern, tag_name):

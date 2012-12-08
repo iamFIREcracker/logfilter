@@ -384,6 +384,12 @@ class Text(tkinter.Frame):
 
         self._initialize(**kwargs)
 
+    def _popuplabel(self, text):
+        """
+        Create a label to be displayed in the popup menu.
+        """
+        return text.ljust(20)
+
     def _initialize(self, **kwargs):
         """
         Initialize the text widget.
@@ -397,18 +403,18 @@ class Text(tkinter.Frame):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        popup.add_command(label="Edit".ljust(20), command=self.edit)
-        popup.add_command(label="Clear".ljust(20), command=self.clear)
+        popup.add_command(label=self._popuplabel('Edit'), command=self.edit)
+        popup.add_command(label=self._popuplabel('Clear'), command=self.clear)
         popup.add_separator()
         popup.add_checkbutton(
-                label="Greedy coloring".ljust(20),
+                label=self._popuplabel('Greedy coloring'),
                 onvalue=True, offvalue=False, variable=self._greedy_coloring)
         popup.add_separator()
         popup.add_checkbutton(
-                label="Auto scroll".ljust(20),
+                label=self._popuplabel('Auto scroll'),
                 onvalue=True, offvalue=False, variable=self._scroll_on_output)
         popup.add_checkbutton(
-                label="Auro raise".ljust(20),
+                label=self._popuplabel('Auto raise'),
                 onvalue=True, offvalue=False, variable=self._raise_on_output)
 
         text.tag_config('currentline', background=CURRENTLINEBACKGROUND)

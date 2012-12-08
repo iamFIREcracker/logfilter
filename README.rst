@@ -120,7 +120,7 @@ Changelog
   was rendered in the text widget
 - ISSUE-25: fix PY3K compatibility (there was a problem with local imports)
 
-0.6.0dev:
+0.6.0dev (2012-12-01):
 
 - ISSUE-23: add popup menu entry to disable *raise on output*
 - ISSUE-19: add popup menu entry to enable line greedy coloring (multiple

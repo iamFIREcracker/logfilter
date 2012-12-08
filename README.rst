@@ -111,6 +111,12 @@ respectively.
 Changelog
 =========
 
+0.7.0dev:
+
+- ISSUE-24: fix a bug where the selected text of the current line was not
+  highlighted properly
+- ISSUE-27: add `--font` command line option to configure the font
+
 0.6.0dev:
 
 - ISSUE-23: add popup menu entry to disable *raise on output*

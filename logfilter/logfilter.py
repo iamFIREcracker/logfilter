@@ -401,14 +401,15 @@ class Text(tkinter.Frame):
         popup.add_command(label="Clear".ljust(20), command=self.clear)
         popup.add_separator()
         popup.add_checkbutton(
+                label="Greedy coloring".ljust(20),
+                onvalue=True, offvalue=False, variable=self._greedy_coloring)
+        popup.add_separator()
+        popup.add_checkbutton(
                 label="Auto scroll".ljust(20),
                 onvalue=True, offvalue=False, variable=self._scroll_on_output)
         popup.add_checkbutton(
                 label="Auro raise".ljust(20),
                 onvalue=True, offvalue=False, variable=self._raise_on_output)
-        popup.add_checkbutton(
-                label="Greedy coloring".ljust(20),
-                onvalue=True, offvalue=False, variable=self._greedy_coloring)
 
         text.tag_config('currentline', background=CURRENTLINEBACKGROUND)
         text.tag_config('selection', background=SELECTBACKGROUND)

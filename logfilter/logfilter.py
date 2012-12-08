@@ -424,6 +424,7 @@ class Text(tkinter.Frame):
         linepanel.grid(row=0, column=0, sticky='NSW')
         linepanel.config(yscrollcommand=self._on_scroll_change(vert_scroll, text))
 
+        text.tag_config('text', lmargin2='5')
         text.tag_config('currentline', background=CURRENTLINEBACKGROUND)
         text.tag_config('selection', background=SELECTBACKGROUND)
         text.grid(row=0, column=1, sticky='NSEW')
@@ -525,9 +526,12 @@ class Text(tkinter.Frame):
         """
         Clear the text widget.
         """
+        self.linepanel.config(state=tkinter.NORMAL)
         self.text.config(state=tkinter.NORMAL)
+        self.linepanel.delete(1.0, tkinter.END)
         self.text.delete(1.0, tkinter.END)
         self.text.config(state=tkinter.DISABLED)
+        self.linepanel.config(state=tkinter.DISABLED)
         self._lines = 0
         self._line_numbers = deque()
 
@@ -590,7 +594,7 @@ class Text(tkinter.Frame):
             start = self.text.index('{0} - 1 lines'.format(tkinter.END))
             end = self.text.index(tkinter.END)
 
-            self.text.insert(tkinter.END, line)
+            self.text.insert(tkinter.END, line, 'text')
             self.linepanel.insert(tkinter.END, '{0:>7}\n'.format(i))
             [highlight_tag(t) for t in list(self._tags)]
 
@@ -607,6 +611,7 @@ class Text(tkinter.Frame):
                 if self._selected_line is not UNSELECTED:
                     self._selected_line = self.text.index(
                             "{0} - 1 lines".format(self._selected_line))
+
 
         self.text.config(state=tkinter.DISABLED)
         self.linepanel.config(state=tkinter.DISABLED)

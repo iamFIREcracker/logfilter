@@ -625,10 +625,10 @@ class AutoScrollbar(tkinter.Scrollbar):
         tkinter.Scrollbar.set(self, lo, hi)
 
     def pack(self, **kw):
-        raise tkinter.TclError, "cannot use pack with this widget"
+        raise tkinter.TclError("cannot use pack with this widget")
 
     def place(self, **kw):
-        raise tkinter.TclError, "cannot use place with this widget"
+        raise tkinter.TclError("cannot use place with this widget")
 
 
 @debug

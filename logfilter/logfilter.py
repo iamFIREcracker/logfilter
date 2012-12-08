@@ -447,10 +447,12 @@ class Text(tkinter.Frame):
         self._clear_current()
 
         # .. and highlight the new line
-        self._selected_line = self.text.index(
+        newline = self.text.index(
                 "@{0},{1} linestart".format(event.x, event.y))
-        line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
-        self.text.tag_add("currentline", self._selected_line, line_end)
+        if int(float(newline)) <= self._lines:
+            self._selected_line = newline
+            line_end = self.text.index("{0} + 1 lines".format(self._selected_line))
+            self.text.tag_add("currentline", self._selected_line, line_end)
 
         # Finally, hide the menu
         self.popup.unpost()

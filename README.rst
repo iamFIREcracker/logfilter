@@ -111,7 +111,7 @@ respectively.
 Changelog
 =========
 
-0.7.0dev:
+0.7.0dev (2012-12-08):
 
 - ISSUE-24: fix a bug where the selected text of the current line was not
   highlighted properly

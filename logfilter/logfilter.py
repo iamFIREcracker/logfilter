@@ -15,12 +15,12 @@ from collections import namedtuple
 from itertools import cycle
 from itertools import takewhile
 
-from _compact import filedialog
-from _compact import filter
-from _compact import func_get_name
-from _compact import tkinter
-from _compact import queue
-from _compact import range
+from ._compact import filedialog
+from ._compact import filter
+from ._compact import func_get_name
+from ._compact import tkinter
+from ._compact import queue
+from ._compact import range
 
 
 """Number of lines to collect before telling the gui to refresh."""

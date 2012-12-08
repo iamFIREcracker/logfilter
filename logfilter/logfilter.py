@@ -570,6 +570,10 @@ class Text(tkinter.Frame):
                 self._lines -= 1
                 self._line_numbers.popleft()
 
+                if self._selected_line is not UNSELECTED:
+                    self._selected_line = self.text.index(
+                            "{0} - 1 lines".format(self._selected_line))
+
         self.text.config(state=tkinter.DISABLED)
 
         # Scroll to the bottom

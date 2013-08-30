@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+from __future__ import absolute_import
 
 import datetime
 import os
@@ -15,6 +16,7 @@ from collections import namedtuple
 from itertools import cycle
 from itertools import takewhile
 
+from logfilter import __version__
 from ._compact import filedialog
 from ._compact import filter
 from ._compact import func_get_name
@@ -853,6 +855,10 @@ def _build_parser():
             action='store_true')
     parser.add_argument(
             '--font', dest='font', help='Font used by the application')
+    parser.add_argument(
+            '--version', action='version',
+            version='%(prog)s {0}'.format(__version__),
+            help='print the application version and quit')
 
     return parser
 

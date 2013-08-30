@@ -4,8 +4,10 @@ import os
 from setuptools import find_packages
 from setuptools import setup
 
+from logfilter import __version__
 
-VERSION = '0.8.0'
+
+VERSION = __version__
 NAME = 'logfilter'
 PACKAGES = [NAME]
 DESCRIPTION = 'Poll log files for updates and highlight words based on regexp filters'

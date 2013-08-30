@@ -72,8 +72,8 @@ LINES_UNLIMITED = -1
 """Default sleep interval"""
 SLEEP_INTERVAL = 1.0
 
-"""Catch all filter"""
-CATCH_ALL = ['^']
+"""Passthru filter."""
+PASSTHRU_FILTER = '^'
 
 """End of file sentinel"""
 EOF = object()
@@ -111,14 +111,17 @@ def StringVar(default):
     return s
 
 
-def BooleanVar(default):
+def BooleanVar(default, callback=None):
     """
     Return a new (initialized) `tkinter.BooleanVar`.
 
     @param default default boolean value
+    @param callback function to invoke whenever variable changes its value
     """
     b = tkinter.BooleanVar()
     b.set(default)
+    if callback:
+        b.trace('w', callback)
     return b
 
 
@@ -181,6 +184,7 @@ class Gui(tkinter.Tk):
                 inactiveselectbackground=SELECTBACKGROUND,
                 font=font, wrap=tkinter.NONE)
         self.text.grid(row=2, column=0, sticky='NSEW')
+        self.text.bind('<<PassthruSwitch>>', self.on_press_enter_event) # XXX why the hell can't use register_listener here???
         self.text.configure_scroll_limit(scroll_limit)
         self.text.set_filename(filename)
 
@@ -211,14 +215,19 @@ class Gui(tkinter.Tk):
     @debug
     def on_press_enter(self):
         filename = self.file_chooser.get_filename()
+        passthru = self.text.get_passthru()
         self.title(_TITLE.format(filename=filename))
         filter_strings = [s.get() for s in self.filter_strings]
+        # When the passthru switch is enabled notify workers the sole
+        # catch-all filter in order to simplify processing
+        queue_filter_strings = [PASSTHRU_FILTER] if passthru \
+                                                 else filter_strings 
         self.text.set_filename(filename)
         self.text.configure_tags(
                 Tag(n, f, {'foreground': c})
                 for ((n, c), f) in zip(cycle(_TAG_PALETTE), filter_strings))
         (func, args, kwargs) = self.on_new_filter_listener
-        args = [filename, filter_strings] + list(args)
+        args = [filename, queue_filter_strings] + list(args)
         func(*args, **kwargs)
 
     @debug
@@ -377,6 +386,9 @@ class Text(tkinter.Frame):
         self._scroll_on_output = BooleanVar(True)
         self._raise_on_output = BooleanVar(True)
         self._greedy_coloring = BooleanVar(False)
+        def _on_passthru_change(*args, **kwargs):
+            self.event_generate('<<PassthruSwitch>>')
+        self._passthru = BooleanVar(False, _on_passthru_change)
         self._lines = 0
         self._line_numbers = deque()
         self._filename = ''
@@ -410,6 +422,9 @@ class Text(tkinter.Frame):
         popup.add_checkbutton(
                 label=self._popuplabel('Greedy coloring'),
                 onvalue=True, offvalue=False, variable=self._greedy_coloring)
+        popup.add_checkbutton(
+                label=self._popuplabel('Passthru'),
+                onvalue=True, offvalue=False, variable=self._passthru)
         popup.add_separator()
         popup.add_checkbutton(
                 label=self._popuplabel('Auto scroll'),
@@ -517,6 +532,14 @@ class Text(tkinter.Frame):
         self.text.config(state=tkinter.DISABLED)
         self._lines = 0
         self._line_numbers = deque()
+
+    def get_passthru(self):
+        """
+        Return the value of the passthru switch
+
+        @return the value of the passthru switch.
+        """
+        return self._passthru.get()
 
     def _get_editor(self):
         """
@@ -626,12 +649,11 @@ class Text(tkinter.Frame):
 
 
 @debug
-def filter_thread_spawner_body(catchall, lines, interval, filter_queue,
+def filter_thread_spawner_body(lines, interval, filter_queue,
         lines_queue):
     """
     Spawn a file filter thread as soon as a filter is read from the queue.
 
-    @param catchall flag indicating all the lines of the file should be returned
     @param lines line used to skip stale lines
     @param interval polling interval
     @param filter_queue message queue containing the filter to apply
@@ -649,8 +671,6 @@ def filter_thread_spawner_body(catchall, lines, interval, filter_queue,
             break
 
         (filename, filters) = item
-        if catchall:
-            filters = CATCH_ALL
         stop = threading.Event()
         worker = threading.Thread(
             target=file_observer_body,
@@ -849,10 +869,6 @@ def _build_parser():
             '-e', '--regexp', dest='filters', action='append',
             help='Filter presets', metavar='FILTERS')
     parser.add_argument(
-            '-a', '--catch-all', dest='catchall', default=False,
-            help='Catch all the lines and highlight those matching filters',
-            action='store_true')
-    parser.add_argument(
             '--font', dest='font', help='Font used by the application')
     parser.add_argument(
             '--version', action='version',
@@ -886,8 +902,7 @@ def _main():
 
     filter_thread_spawner = threading.Thread(
             target=filter_thread_spawner_body,
-            args=(args.catchall, args.limit, args.interval, filter_queue,
-                lines_queue))
+            args=(args.limit, args.interval, filter_queue, lines_queue))
     filter_thread_spawner.start()
 
     gui_updater = threading.Thread(

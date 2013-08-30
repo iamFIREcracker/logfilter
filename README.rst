@@ -60,8 +60,6 @@ this is the help of the application::
                             Number of lines to display in the text area
     -e FILTERS, --regexp FILTERS
                             Filter presets
-    -a, --catch-all       Catch all the lines and highlight those matching
-                            filters
 
 Don't be scared, you don't need to configure all of them to start the
 application;  the GUI indeed, will let you customize them later.  However,
@@ -113,8 +111,8 @@ Changelog
 
 0.8.0dev:
 
-- Remove `-a|--catch-all` command line switches and add a new checkbox menu
-  item honoring the same functionality
+- Remove `-a` and `--catch-all` command line switches and add a new checkbox
+  menu item honoring the same functionality (ISSUE-29)
 - The application does not quit anymore if the `Escape` key is pressed.
 - Add `--version` command line switch.
 

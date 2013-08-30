@@ -149,7 +149,6 @@ class Gui(tkinter.Tk):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
-        self.bind('<Escape>', self.on_quit)
 
         # Container 0
         self.file_chooser = FileChooser(self, filename=filename)

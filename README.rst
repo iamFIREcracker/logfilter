@@ -111,6 +111,13 @@ respectively.
 Changelog
 =========
 
+0.8.0dev:
+
+- Remove `-a|--catch-all` command line switches and add a new checkbox menu
+  item honoring the same functionality
+- The application does not quit anymore if the `Escape` key is pressed.
+- Add `--version` command line switch.
+
 0.7.0dev (2012-12-08):
 
 - ISSUE-24: fix a bug where the selected text of the current line was not

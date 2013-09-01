@@ -110,7 +110,7 @@ respectively.
 Changelog
 =========
 
-0.8.0dev:
+0.8.0dev (2013-09-02):
 
 - ISSUE-31: it is now possible to add or remove filters dynamically at run-time
   (i.e. a new filter can be added focusing the text box containing the text

@@ -123,7 +123,7 @@ class Gui(tkinter.Tk):
         self.filter_bar.bind('<<FiltersReady>>', self.on_press_enter_event)
         button = tkinter.Button(
                 container1, text="Filter", command=self.on_press_enter)
-        button.grid(row=0, column=len(filters), sticky='EW')
+        button.grid(row=0, column=len(filters) + 1, sticky='EW')
 
         # Container2
         self.text = Text(

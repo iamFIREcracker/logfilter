@@ -4,7 +4,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
-import datetime
 import os
 import re
 import time
@@ -12,17 +11,20 @@ import subprocess
 import threading
 from argparse import ArgumentParser
 from collections import deque
-from collections import namedtuple
 from itertools import cycle
 from itertools import takewhile
 
 from logfilter import __version__
 from ._compact import filedialog
 from ._compact import filter
-from ._compact import func_get_name
 from ._compact import tkinter
 from ._compact import queue
 from ._compact import range
+from .common import debug
+from .common import Tag
+from .common import BooleanVar
+from .common import StringVar
+from .ui import FilterBar
 
 
 """Number of lines to collect before telling the gui to refresh."""
@@ -85,63 +87,6 @@ EDITORS = 'LFEDITOR VISUAL EDITOR'.split(' ')
 UNSELECTED = object()
 
 
-def debug(func):
-    """
-    Decorator which prints a message before and after a function execution.
-    """
-    NOW = lambda: datetime.datetime.now()
-
-    def wrapper(*args, **kwargs):
-        print('{now}: {fname}: entering'.format(
-            now=NOW(), fname=func_get_name(func)))
-        func(*args, **kwargs)
-        print('{now}: {fname}: exiting...'.format(
-            now=NOW(), fname=func_get_name(func)))
-    return wrapper
-
-
-def _var(ctor, default, callback=None):
-    """
-    Creates a Tkinter variable, initialize it and possibly trace it.
-
-    @param default the variable initial value
-    @param callback function to invoke whenever the variable changes its value
-    @return the created variable
-    """
-    var = ctor()
-    var.set(default)
-    if callback:
-        var.trace('w', callback)
-    return var
-
-
-def StringVar(default, callback=None):
-    """
-    Return a new (initialized) `tkinter.StringVar.
-
-    @param default the variable initial value
-    @param callback function to invoke whenever the variable changes its value
-    @return the created variable
-    """
-    return _var(tkinter.StringVar, default, callback)
-
-
-def BooleanVar(default, callback=None):
-    """
-    Return a new (initialized) `tkinter.BooleanVar`.
-
-    @param default the variable initial value
-    @param callback function to invoke whenever the variable changes its value
-    @return the created variable
-    """
-    return _var(tkinter.BooleanVar, default, callback)
-
-
-
-"""Tag object used by the `Text` widget to hanndle string coloring."""
-Tag = namedtuple('Tag', 'name pattern settings'.split())
-
-
 class Gui(tkinter.Tk):
 
     def __init__(self, parent, **kwargs):
@@ -173,17 +118,12 @@ class Gui(tkinter.Tk):
         # Container1
         container1 = tkinter.Frame(self)
         container1.grid(row=1, column=0, sticky='EW')
-        for i in range(len(filters)):
-            container1.grid_columnconfigure(i, weight=1)
 
-        self.filter_strings = [StringVar(f) for f in filters]
-        entries = [tkinter.Entry(container1, textvariable=filter_string)
-                    for filter_string in self.filter_strings]
-        for (i, entry) in enumerate(entries):
-            entry.focus_force()
-            entry.grid(row=0, column=i, sticky='EW')
-            entry.bind("<Return>", self.on_press_enter_event)
-
+        container15 = tkinter.Frame(container1)
+        container15.grid(row=0, column=0, sticky='EW')
+        self.filter_bar = FilterBar(container15, filter_values=filters)
+        self.filter_bar.grid(row=0, column=0, sticky='EW')
+        self.filter_bar.bind('<<FiltersReady>>', self.on_press_enter_event)
         button = tkinter.Button(
                 container1, text="Filter", command=self.on_press_enter)
         button.grid(row=0, column=len(filters), sticky='EW')
@@ -229,7 +169,7 @@ class Gui(tkinter.Tk):
         filename = self.file_chooser.get_filename()
         passthru = self.text.get_passthru()
         self.title(_TITLE.format(filename=filename))
-        filter_strings = [s.get() for s in self.filter_strings]
+        filter_strings = self.filter_bar.get_filter_values()
         # When the passthru switch is enabled notify workers the sole
         # catch-all filter in order to simplify processing
         queue_filter_strings = [PASSTHRU_FILTER] if passthru \

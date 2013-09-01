@@ -127,13 +127,11 @@ class FilterBar(object):
         @param value the filter value.
         @return the created filter
         """
+        # Create the filter
         filter_ = FilterWithPlaceholder(self, value=value)
-        filter_.grid(row=0, column=len(self._filters), sticky='EW')
         filter_.focus_force()
-
-        def _on_return_event(evt):
-            self.event_generate('<<FiltersReady>>')
-        filter_.bind('<Return>', _on_return_event)
+        filter_.bind('<Return>',
+                     lambda evt: self.event_generate('<<FiltersReady>>'))
 
         def _on_typing_out_event(evt):
             if filter_.get() == '':
@@ -142,8 +140,13 @@ class FilterBar(object):
                 filter_.destroy()
         filter_.bind('<<TypingOut>>', _on_typing_out_event)
 
-        self._filters[-1].grid(row=0, column=len(self._filters) + 1)
+        # Push the filter in the list
         self._filters = self._filters[:-1] + [filter_] + [self._filters[-1]]
+
+        # Refresh the grid
+        for (i, curr) in enumerate(self._filters):
+            curr.grid(row=0, column=i, sticky='EW')
+
         return filter_
 
     def get_filter_values(self):

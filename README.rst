@@ -111,8 +111,14 @@ Changelog
 
 0.8.0dev:
 
-- Remove `-a` and `--catch-all` command line switches and add a new checkbox
-  menu item honoring the same functionality (ISSUE-29)
+- ISSUE-31: it is now possible to add or remove filters dynamically at run-time
+  (i.e. a new filter can be added focusing the text box containing the text
+  ``<Add new>``, while old ones can be removed by blanking their text box).
+  Contenxtually with this change, the command line switches `-f` and
+  `--num-filters` have been removed.
+- ISSUE-29: add popup entry to enable/disable passthru behaviour (i.e. display
+  all the lines and highlight only those bits matching filters).  Contextually,
+  the command line switches `-a` and `--catch-all` have been removed.
 - The application does not quit anymore if the `Escape` key is pressed.
 - Add `--version` command line switch.
 

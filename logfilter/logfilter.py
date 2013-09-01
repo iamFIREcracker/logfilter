@@ -62,9 +62,6 @@ _TITLE = 'logfilter: {filename}'
 """Default initial directory used by the file chooser widget"""
 _INITIALDIR = os.path.expanduser('~')
 
-"""Number of string filters."""
-NUM_FILTERS = 1
-
 """Number of lines to display on screen."""
 LINES_LIMIT = 8000
 
@@ -811,10 +808,6 @@ def _build_parser():
             type=float, help='Sleep SLEEP_INTERVAL seconds between iterations',
             metavar='SLEEP_INTERVAL')
     parser.add_argument(
-            '-f', '--num-filters', dest='num_filters', default=NUM_FILTERS,
-            type=int, help='Number of filters to apply to log file',
-            metavar='NUM_FILTERS')
-    parser.add_argument(
             '-l', '--limit', dest='limit', default=LINES_LIMIT, type=int,
             help='Number of lines to display in the text area', metavar='LIMIT')
     parser.add_argument(
@@ -836,9 +829,6 @@ def _main():
 
     # create the array of filters
     filters = args.filters if args.filters else []
-    num_filters = max(len(filters), args.num_filters)
-    empty_filters = num_filters - len(filters)
-    filters += [''] * empty_filters
 
     # create communication queues, shared between threads
     filter_queue = queue.Queue()

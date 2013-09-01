@@ -100,29 +100,41 @@ def debug(func):
     return wrapper
 
 
-def StringVar(default):
+def _var(ctor, default, callback=None):
+    """
+    Creates a Tkinter variable, initialize it and possibly trace it.
+
+    @param default the variable initial value
+    @param callback function to invoke whenever the variable changes its value
+    @return the created variable
+    """
+    var = ctor()
+    var.set(default)
+    if callback:
+        var.trace('w', callback)
+    return var
+
+
+def StringVar(default, callback=None):
     """
     Return a new (initialized) `tkinter.StringVar.
 
-    @param default default string value
+    @param default the variable initial value
+    @param callback function to invoke whenever the variable changes its value
+    @return the created variable
     """
-    s = tkinter.StringVar()
-    s.set(default)
-    return s
+    return _var(tkinter.StringVar, default, callback)
 
 
 def BooleanVar(default, callback=None):
     """
     Return a new (initialized) `tkinter.BooleanVar`.
 
-    @param default default boolean value
-    @param callback function to invoke whenever variable changes its value
+    @param default the variable initial value
+    @param callback function to invoke whenever the variable changes its value
+    @return the created variable
     """
-    b = tkinter.BooleanVar()
-    b.set(default)
-    if callback:
-        b.trace('w', callback)
-    return b
+    return _var(tkinter.BooleanVar, default, callback)
 
 
 

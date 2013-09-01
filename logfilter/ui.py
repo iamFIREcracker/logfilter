@@ -62,7 +62,8 @@ class FilterWithPlaceholder(object):
         """
         self._placeholder = options.pop('placeholder', '')
 
-        options.update(value=self._placeholder)
+        if self._placeholder:
+            options.update(value=self._placeholder)
         self._proxy = Filter(parent, **options)
 
         def _on_focus_in_event(evt):

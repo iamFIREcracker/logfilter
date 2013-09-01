@@ -41,9 +41,10 @@ Usage
 To give you an idea of the configuration options available for **logfilter**,
 this is the help of the application::
 
-    usage: logfilter [-h] [-s SLEEP_INTERVAL] [-f NUM_FILTERS] [-l LIMIT]
-                 [-e FILTERS] [-a]
-                 [FILENAME]
+
+    usage: logfilter [-h] [-s SLEEP_INTERVAL] [-l LIMIT] [-e FILTERS]
+                    [--font FONT] [--version]
+                    [FILENAME]
 
     Filter the content of a file, dynamically
 
@@ -54,12 +55,12 @@ this is the help of the application::
     -h, --help            show this help message and exit
     -s SLEEP_INTERVAL, --sleep-interval SLEEP_INTERVAL
                             Sleep SLEEP_INTERVAL seconds between iterations
-    -f NUM_FILTERS, --num-filters NUM_FILTERS
-                            Number of filters to apply to log file
     -l LIMIT, --limit LIMIT
                             Number of lines to display in the text area
     -e FILTERS, --regexp FILTERS
                             Filter presets
+    --font FONT           Font used by the application
+    --version             print the application version and quit
 
 Don't be scared, you don't need to configure all of them to start the
 application;  the GUI indeed, will let you customize them later.  However,
@@ -95,7 +96,7 @@ line of interest.
 For example, to make ``gvim`` your external editor, run ``logfilter`` as
 follows::
 
-    LFEDITOR="gvim FILE +ROW" LOGFILE.log -e FOO
+    LFEDITOR="gvim FILE +ROW" logfilter LOGFILE.log -e FOO
 
 Otherwise, if you are on Windows and prefer to use ``TextPad``::
 

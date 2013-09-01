@@ -146,6 +146,7 @@ class FilterBar(object):
         # Refresh the grid
         for (i, curr) in enumerate(self._filters):
             curr.grid(row=0, column=i, sticky='EW')
+            curr.lift()
 
         return filter_
 

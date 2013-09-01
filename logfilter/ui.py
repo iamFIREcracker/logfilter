@@ -94,35 +94,57 @@ class FilterBar(object):
     """
 
     def __init__(self, parent, **kwargs):
+        """
+        Constructor.
+
+        @param options the list of options for the `Tkinter.Frame` constructor;
+                       an additional 'filter_values' option (list of strings)
+                       could be specified in order to initialize the filter bar
+                       with the specified set of filters.
+        """
+        filter_values = kwargs.pop('filter_values', [])
+
         self._proxy = tkinter.Frame(parent, **kwargs)
 
         last_filter = FilterWithPlaceholder(self._proxy,
                                             placeholder='<Add new>',
                                             foreground='#999')
         last_filter.grid(row=0, column=0, sticky='EW')
+        last_filter.bind('<<TypingIn>>', lambda e: self.add_filter())
 
-        def _on_typing_in_event(evt):
-            filter_ = FilterWithPlaceholder(self)
-            filter_.grid(row=0, column=len(self._filters), sticky='EW')
-            filter_.focus_force()
-
-            def _on_return_event(evt):
-                self.event_generate('<<FiltersReady>>')
-            filter_.bind('<Return>', _on_return_event)
-
-            def _on_typing_out_event(evt):
-                if filter_.get() == '':
-                    filter_.grid_remove()
-            filter_.bind('<<TypingOut>>', _on_typing_out_event)
-
-            last_filter.grid(row=0, column=len(self._filters) + 1)
-
-            self._filters = self._filters[:-1] + [filter_] + [last_filter]
-        last_filter.bind('<<TypingIn>>', _on_typing_in_event)
         self._filters = [last_filter]
+
+        for value in filter_values:
+            self.add_filter(value)
 
     def __getattr__(self, name):
         return getattr(self._proxy, name)
+
+    def add_filter(self, value=''):
+        """
+        Adds a new filter with the specified value to the filter bar.
+
+        @param value the filter value.
+        @return the created filter
+        """
+        filter_ = FilterWithPlaceholder(self, value=value)
+        filter_.grid(row=0, column=len(self._filters), sticky='EW')
+        filter_.focus_force()
+
+        def _on_return_event(evt):
+            self.event_generate('<<FiltersReady>>')
+        filter_.bind('<Return>', _on_return_event)
+
+        def _on_typing_out_event(evt):
+            if filter_.get() == '':
+                self._filters.remove(filter_)
+                filter_.grid_forget()
+                filter_.destroy()
+        filter_.bind('<<TypingOut>>', _on_typing_out_event)
+
+        self._filters[-1].grid(row=0, column=len(self._filters) + 1)
+        self._filters = self._filters[:-1] + [filter_] + [self._filters[-1]]
+        return filter_
 
     def get_filter_values(self):
         """

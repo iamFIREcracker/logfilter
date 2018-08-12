@@ -110,6 +110,8 @@ respectively.
 Changelog
 =========
 
+1.0.0 (2018-08-12) - made 0.8.0dev public
+
 0.8.0dev (2013-09-02):
 
 - ISSUE-31: it is now possible to add or remove filters dynamically at run-time
